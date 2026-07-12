@@ -143,36 +143,40 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Sub telemetry row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <div className="bg-ink-950 text-canvas border border-ink-800 rounded-sm p-4 flex items-center gap-4">
-                <div className="h-10 w-10 bg-ink-800 rounded-full flex items-center justify-center text-signal-amber">
-                  <Truck size={20} />
-                </div>
-                <div>
-                  <p className="text-xs text-ink-500 uppercase tracking-wider font-semibold">Active Fleet</p>
-                  <h4 className="text-lg font-bold">{kpis.total_active_vehicles} Vehicles</h4>
-                </div>
+            {/* Spec KPIs Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Active Vehicles</p>
+                <p className="text-lg font-bold text-slate-ink mt-1">{kpis.active_vehicles}</p>
               </div>
-
-              <div className="bg-ink-950 text-canvas border border-ink-800 rounded-sm p-4 flex items-center gap-4">
-                <div className="h-10 w-10 bg-ink-800 rounded-full flex items-center justify-center text-transit-blue">
-                  <Users size={20} />
-                </div>
-                <div>
-                  <p className="text-xs text-ink-500 uppercase tracking-wider font-semibold">Drivers Dispatched</p>
-                  <h4 className="text-lg font-bold">{kpis.drivers_on_trip} On Road</h4>
-                </div>
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Available Vehicles</p>
+                <p className="text-lg font-bold text-rail-green mt-1">{kpis.available_vehicles}</p>
               </div>
-
-              <div className="bg-ink-950 text-canvas border border-ink-800 rounded-sm p-4 flex items-center gap-4">
-                <div className="h-10 w-10 bg-ink-800 rounded-full flex items-center justify-center text-rail-green">
-                  <Compass size={20} />
-                </div>
-                <div>
-                  <p className="text-xs text-ink-500 uppercase tracking-wider font-semibold">Completed Distance</p>
-                  <h4 className="text-lg font-bold">{kpis.total_distance.toLocaleString()} km</h4>
-                </div>
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">In Maintenance</p>
+                <p className="text-lg font-bold text-signal-amber mt-1">{kpis.vehicles_in_maintenance}</p>
+              </div>
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Fleet Utilization</p>
+                <p className="text-lg font-bold text-transit-blue mt-1">{kpis.fleet_utilization}%</p>
+              </div>
+              
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Active Trips</p>
+                <p className="text-lg font-bold text-slate-ink mt-1">{kpis.active_trips}</p>
+              </div>
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Pending Trips (Draft)</p>
+                <p className="text-lg font-bold text-slate-ink mt-1">{kpis.pending_trips}</p>
+              </div>
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Drivers On Duty</p>
+                <p className="text-lg font-bold text-slate-ink mt-1">{kpis.drivers_on_duty}</p>
+              </div>
+              <div className="bg-canvas-raised border border-paper-line rounded-sm p-4 shadow-sm">
+                <p className="text-[10px] uppercase font-bold text-ink-500 tracking-wider">Total Distance</p>
+                <p className="text-lg font-bold text-slate-ink mt-1 font-mono">{kpis.total_distance.toLocaleString()} km</p>
               </div>
             </div>
 

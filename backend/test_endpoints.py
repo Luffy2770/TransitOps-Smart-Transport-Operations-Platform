@@ -185,4 +185,18 @@ print(f"Excessive cargo trip status: {trip_response.status_code}, detail: {trip_
 assert trip_response.status_code == 400
 assert "exceeds" in trip_response.json()["detail"].lower()
 
+# 18. Dispatch vehicle/driver that is already busy (Expect 400)
+print("\n[Test 18] Attempting to dispatch a Trip with a busy Driver...")
+# Driver 2 (Lewis Hamilton) is ON_TRIP. Let's try to dispatch a trip that uses Driver 2.
+# Trip 3 (TRIP-003) is seeded as Draft, uses Driver 3 (Available).
+# Let's try to temporarily update Trip 3 to use Driver 2, and then dispatch it.
+trip3_dispatch_fail = requests.patch(
+    f"{BASE_URL}/trips/3", 
+    json={"driver_id": 2, "status": "Dispatched"}, 
+    headers=disp_headers
+)
+print(f"Busy dispatch status: {trip3_dispatch_fail.status_code}, detail: {trip3_dispatch_fail.json()}")
+assert trip3_dispatch_fail.status_code == 400
+assert "not available" in trip3_dispatch_fail.json()["detail"].lower()
+
 print("\n--- ALL COMPREHENSIVE TESTS PASSED SUCCESSFULLY! ---")

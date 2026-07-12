@@ -23,6 +23,7 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('transitops_token')
       localStorage.removeItem('transitops_user')
+      window.location.href = '/login'
     }
     return Promise.reject(err)
   }

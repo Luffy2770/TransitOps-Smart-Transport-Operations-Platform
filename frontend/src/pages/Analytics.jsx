@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Topbar } from '@/components/Topbar'
 import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download, ArrowUpDown, ArrowUp, ArrowDown, FileText } from 'lucide-react'
-import { jsPDF } from 'jspdf'
+import jsPDF from 'jspdf'
 import { 
   BarChart, 
   Bar, 
@@ -97,7 +97,17 @@ export default function Analytics() {
 
   // Direct PDF Export using jsPDF
   function exportToPDF() {
-    const doc = new jsPDF({
+    let pdfInstance = jsPDF
+    if (typeof pdfInstance !== 'function' && jsPDF && typeof jsPDF.jsPDF === 'function') {
+      pdfInstance = jsPDF.jsPDF
+    }
+
+    if (typeof pdfInstance !== 'function') {
+      alert('PDF generation failed: jsPDF is not a constructor.')
+      return
+    }
+
+    const doc = new pdfInstance({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
@@ -143,14 +153,19 @@ export default function Analytics() {
         doc.rect(15, y - 5, 180, 7, 'F')
       }
       
-      doc.text(row.registration_number || '—', 18, y)
-      doc.text(`$${row.acquisition_cost.toLocaleString()}`, 50, y)
-      doc.text(`$${row.total_revenue.toLocaleString()}`, 80, y)
-      doc.text(`$${row.total_maintenance_cost.toLocaleString()}`, 110, y)
-      doc.text(`$${row.total_fuel_cost.toLocaleString()}`, 140, y)
-      
-      const roiVal = row.roi_percentage
+      const reg = row.registration_number || '—'
+      const acq = typeof row.acquisition_cost === 'number' ? row.acquisition_cost.toLocaleString() : '0'
+      const rev = typeof row.total_revenue === 'number' ? row.total_revenue.toLocaleString() : '0'
+      const maint = typeof row.total_maintenance_cost === 'number' ? row.total_maintenance_cost.toLocaleString() : '0'
+      const fuel = typeof row.total_fuel_cost === 'number' ? row.total_fuel_cost.toLocaleString() : '0'
+      const roiVal = typeof row.roi_percentage === 'number' ? row.roi_percentage : 0
       const roiText = `${roiVal.toFixed(1)}%`
+      
+      doc.text(reg, 18, y)
+      doc.text(`$${acq}`, 50, y)
+      doc.text(`$${rev}`, 80, y)
+      doc.text(`$${maint}`, 110, y)
+      doc.text(`$${fuel}`, 140, y)
       
       if (roiVal >= 0) {
         doc.setTextColor(47, 107, 79) // rail green

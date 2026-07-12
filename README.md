@@ -67,7 +67,7 @@ You can use the root-level script `start.bat` on Windows to boot both services s
    ```
 3. Initialize and seed the database:
    ```bash
-   python -m app.seed
+   python -m app.database.seed
    ```
 4. Start the Uvicorn ASGI server:
    ```bash

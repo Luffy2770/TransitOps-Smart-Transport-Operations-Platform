@@ -28,6 +28,15 @@ export default function Fleet() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
+  // Document Management State
+  const [activeDocVehicle, setActiveDocVehicle] = useState(null)
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [vehicleDocs, setVehicleDocs] = useState([
+    { id: 1, name: 'Registration_Certificate.pdf', type: 'Registration', size: '2.4 MB', date: '2026-01-10' },
+    { id: 2, name: 'Insurance_Certificate.pdf', type: 'Insurance', size: '1.8 MB', date: '2026-03-24' },
+    { id: 3, name: 'Pollution_Under_Control.pdf', type: 'Emission', size: '920 KB', date: '2026-05-18' }
+  ])
+
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -309,7 +318,7 @@ export default function Fleet() {
                     <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('created_at')}>
                       <span className="inline-flex items-center gap-1">Added On <SortIcon field="created_at" /></span>
                     </th>
-                    {isManager && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
+                    <th className="px-6 py-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-paper-line font-medium text-slate-ink">
@@ -325,26 +334,35 @@ export default function Fleet() {
                         <StatusBadge status={vehicle.status} />
                       </td>
                       <td className="px-6 py-4 text-xs text-ink-500 whitespace-nowrap">{formatTimestamp(vehicle.created_at)}</td>
-                      {isManager && (
-                        <td className="px-6 py-4 text-right">
-                          <div className="inline-flex gap-2">
-                            <button
-                              onClick={() => openEditModal(vehicle)}
-                              className="p-1.5 hover:bg-canvas rounded-sm text-ink-500 hover:text-signal-amber transition-colors"
-                              title="Edit Vehicle"
-                            >
-                              <Edit2 size={15} />
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(vehicle)}
-                              className="p-1.5 hover:bg-canvas rounded-sm text-ink-500 hover:text-alert-red transition-colors"
-                              title="Retire/Delete Vehicle"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
+                      <td className="px-6 py-4 text-right">
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => setActiveDocVehicle(vehicle)}
+                            className="p-1.5 hover:bg-canvas rounded-sm text-ink-500 hover:text-transit-blue transition-colors cursor-pointer"
+                            title="Manage Vehicle Documents"
+                          >
+                            <FileText size={15} />
+                          </button>
+                          {isManager && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(vehicle)}
+                                className="p-1.5 hover:bg-canvas rounded-sm text-ink-500 hover:text-signal-amber transition-colors cursor-pointer"
+                                title="Edit Vehicle"
+                              >
+                                <Edit2 size={15} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(vehicle)}
+                                className="p-1.5 hover:bg-canvas rounded-sm text-ink-500 hover:text-alert-red transition-colors cursor-pointer"
+                                title="Retire/Delete Vehicle"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -518,6 +536,119 @@ export default function Fleet() {
               >
                 Retire Vehicle
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Management Modal */}
+      {activeDocVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/60 p-4">
+          <div className="w-full max-w-lg bg-canvas-raised rounded-sm border border-paper-line shadow-xl overflow-hidden animate-zoom-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between bg-ink-950 text-canvas px-6 py-4 border-b border-paper-line">
+              <div>
+                <h3 className="font-display font-semibold">Vehicle Documents</h3>
+                <p className="font-mono text-[10px] text-ink-500 uppercase mt-0.5">
+                  Registration: {activeDocVehicle.registration_number}
+                </p>
+              </div>
+              <button onClick={() => setActiveDocVehicle(null)} className="hover:text-signal-amber transition-colors cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Document List */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider">Active Uploaded Files</p>
+                <div className="divide-y divide-paper-line border border-paper-line bg-canvas rounded-sm">
+                  {vehicleDocs.map(doc => (
+                    <div key={doc.id} className="p-3 flex items-center justify-between hover:bg-canvas-raised transition-colors">
+                      <div className="flex items-center gap-3">
+                        <FileText size={18} className="text-transit-blue" />
+                        <div>
+                          <p className="text-xs font-semibold text-slate-ink">{doc.name}</p>
+                          <p className="text-[10px] text-ink-500 font-mono">
+                            {doc.type} &bull; {doc.size} &bull; Added {doc.date}
+                          </p>
+                        </div>
+                      </div>
+                      <a 
+                        href="#" 
+                        onClick={(e) => { e.preventDefault(); alert(`Downloading: ${doc.name}`); }}
+                        className="text-xs font-mono font-bold text-signal-amber hover:underline cursor-pointer"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upload Mock form */}
+              <div className="pt-4 border-t border-paper-line">
+                <p className="text-xs font-semibold text-ink-500 uppercase tracking-wider mb-2">Upload New Document</p>
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fileInput = e.target.elements.docFile;
+                    if (!fileInput.files || fileInput.files.length === 0) return;
+                    
+                    setIsUploadingDoc(true);
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    
+                    const fileName = fileInput.files[0].name;
+                    const docType = e.target.elements.docType.value;
+                    const sizeStr = `${(fileInput.files[0].size / (1024 * 1024)).toFixed(1)} MB`;
+                    
+                    const newDoc = {
+                      id: Date.now(),
+                      name: fileName,
+                      type: docType,
+                      size: sizeStr,
+                      date: new Date().toISOString().slice(0, 10)
+                    };
+                    
+                    setVehicleDocs(prev => [...prev, newDoc]);
+                    setIsUploadingDoc(false);
+                    fileInput.value = '';
+                    setSuccessMsg(`Document '${fileName}' uploaded successfully.`);
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-ink-500 mb-1">Doc Type</label>
+                      <select 
+                        name="docType"
+                        className="w-full rounded-sm border border-paper-line bg-canvas px-3 py-1.5 text-xs text-slate-ink outline-none"
+                      >
+                        <option value="Registration">Registration</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Emission">Emission</option>
+                        <option value="Permit">Permit</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-ink-500 mb-1">Select File</label>
+                      <input 
+                        type="file" 
+                        name="docFile"
+                        required
+                        className="w-full text-xs text-ink-500 file:mr-2 file:py-1 file:px-2 file:rounded-sm file:border-0 file:bg-ink-950 file:text-canvas file:text-xs file:font-semibold hover:file:bg-ink-800"
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={isUploadingDoc}
+                    className="w-full py-2 bg-ink-950 hover:bg-ink-800 text-canvas text-xs font-semibold rounded-sm tracking-wide transition-colors disabled:opacity-60 cursor-pointer"
+                  >
+                    {isUploadingDoc ? 'Uploading...' : 'Submit & Store Document'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>

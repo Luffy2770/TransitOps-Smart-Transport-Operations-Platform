@@ -99,3 +99,40 @@ body {
 .dark .text-ink-500 {
   color: #94A3B8 !important; /* slate-400 for secondary details */
 }
+
+@media print {
+  aside, 
+  header, 
+  button, 
+  #theme-toggle, 
+  .no-print, 
+  select,
+  .p-8 > div:first-child { 
+    display: none !important; 
+  }
+
+  main, 
+  .min-h-full, 
+  .p-8 {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .bg-canvas-raised {
+    background: white !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: none !important;
+  }
+
+  .text-slate-ink, .text-ink-900, .text-ink-700 {
+    color: black !important;
+  }
+
+  tr, .bg-canvas-raised {
+    page-break-inside: avoid !important;
+  }
+}

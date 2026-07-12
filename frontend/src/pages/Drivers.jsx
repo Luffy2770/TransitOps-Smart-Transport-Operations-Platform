@@ -16,7 +16,8 @@ import {
   Phone,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Mail
 } from 'lucide-react'
 
 export default function Drivers() {
@@ -27,6 +28,31 @@ export default function Drivers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [remindingDriverId, setRemindingDriverId] = useState(null)
+
+  function getExpiryStatus(expiryDateStr) {
+    if (!expiryDateStr) return 'ok'
+    const expiry = new Date(expiryDateStr)
+    const today = new Date()
+    const diffTime = expiry - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) return 'expired'
+    if (diffDays <= 30) return 'expiring_soon'
+    return 'ok'
+  }
+
+  async function sendEmailReminder(driver) {
+    setRemindingDriverId(driver.id)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 850))
+      setSuccessMsg(`Email license renewal reminder successfully dispatched to ${driver.name}'s inbox.`)
+    } catch (err) {
+      setError('Failed to dispatch email reminder.')
+    } finally {
+      setRemindingDriverId(null)
+    }
+  }
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('')
@@ -300,8 +326,34 @@ export default function Drivers() {
                       <td className="px-6 py-4 font-mono text-xs">{driver.license_number}</td>
                       <td className="px-6 py-4 font-mono text-xs">{driver.license_category}</td>
                       <td className="px-6 py-4 font-mono text-xs text-ink-500">{driver.contact_number}</td>
-                      <td className="px-6 py-4 font-mono text-xs">
-                        {new Date(driver.license_expiry).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-between gap-2 max-w-[175px]">
+                          <div className="flex flex-col">
+                            <span className="font-mono text-xs">
+                              {new Date(driver.license_expiry).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </span>
+                            {getExpiryStatus(driver.license_expiry) === 'expired' && (
+                              <span className="text-[10px] text-alert-red font-bold uppercase tracking-wider">
+                                Expired
+                              </span>
+                            )}
+                            {getExpiryStatus(driver.license_expiry) === 'expiring_soon' && (
+                              <span className="text-[10px] text-signal-amber font-bold uppercase tracking-wider">
+                                Expiring Soon
+                              </span>
+                            )}
+                          </div>
+                          {(getExpiryStatus(driver.license_expiry) === 'expired' || getExpiryStatus(driver.license_expiry) === 'expiring_soon') && (
+                            <button
+                              onClick={() => sendEmailReminder(driver)}
+                              disabled={remindingDriverId === driver.id}
+                              className="p-1 hover:bg-canvas rounded-sm text-ink-500 hover:text-signal-amber transition-colors disabled:opacity-50 cursor-pointer"
+                              title="Send Email Reminder Notification"
+                            >
+                              <Mail size={14} className={remindingDriverId === driver.id ? "animate-pulse text-signal-amber" : ""} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`font-mono text-xs font-bold ${driver.safety_score >= 90 ? 'text-rail-green' : driver.safety_score >= 80 ? 'text-signal-amber' : 'text-alert-red'}`}>

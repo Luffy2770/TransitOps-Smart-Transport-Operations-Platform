@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Topbar } from '@/components/Topbar'
-import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download, ArrowUpDown, ArrowUp, ArrowDown, FileText } from 'lucide-react'
 import { 
   BarChart, 
   Bar, 
@@ -39,6 +39,11 @@ export default function Analytics() {
     let aVal = a[sortBy]
     let bVal = b[sortBy]
 
+    if (sortBy === 'registration_number') {
+      aVal = a.registration_number
+      bVal = b.registration_number
+    }
+
     if (typeof aVal === 'string') {
       return sortOrder === 'asc' 
         ? aVal.localeCompare(bVal) 
@@ -48,14 +53,14 @@ export default function Analytics() {
     return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
   })
 
-  async function fetchAnalytics() {
+  async function fetchROIData() {
     setLoading(true)
     try {
       const res = await api.get('/analytics/roi')
       setRoiData(res.data)
       setError('')
     } catch (err) {
-      setError('Could not retrieve analytics data.')
+      setError('Could not evaluate vehicle investments.')
       console.error(err)
     } finally {
       setLoading(false)
@@ -63,40 +68,27 @@ export default function Analytics() {
   }
 
   useEffect(() => {
-    fetchAnalytics()
+    fetchROIData()
   }, [])
 
+  // Helper for vehicle lookups
+  function getVehicleLabel(reg) {
+    return reg || '—'
+  }
+
+  // Export to CSV Function
   function exportToCSV() {
-    if (!roiData || roiData.length === 0) return
+    const headers = ['Vehicle,Acquisition Cost,Total Revenue,Maintenance Costs,Fuel Costs,Net Return,ROI %\n']
+    const rows = sortedRoiData.map(d => {
+      const netReturn = d.total_revenue - (d.total_maintenance_cost + d.total_fuel_cost)
+      return `${d.registration_number},${d.acquisition_cost},${d.total_revenue},${d.total_maintenance_cost},${d.total_fuel_cost},${netReturn},${d.roi_percentage.toFixed(2)}%\n`
+    })
 
-    const headers = [
-      'Registration Number',
-      'Name',
-      'Acquisition Cost ($)',
-      'Total Revenue ($)',
-      'Maintenance Cost ($)',
-      'Fuel Cost ($)',
-      'ROI (%)'
-    ]
-
-    const rows = roiData.map(item => [
-      item.registration_number,
-      item.name,
-      item.acquisition_cost,
-      item.total_revenue,
-      item.total_maintenance_cost,
-      item.total_fuel_cost,
-      item.roi_percentage
-    ])
-
-    const csvContent = 
-      'data:text/csv;charset=utf-8,' + 
-      [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
-
-    const encodedUri = encodeURI(csvContent)
+    const blob = new Blob([...headers, ...rows], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `transitops_fleet_roi_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `TransitOps_ROI_Report_${new Date().toISOString().slice(0,10)}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -104,7 +96,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-full">
-      <Topbar title="Fleet Analytics" subtitle="Investment returns and cost efficiency analysis" />
+      <Topbar title="Financial Analytics" subtitle="Evaluation of return on investment (ROI)" />
 
       <div className="p-8 space-y-6">
         {error && (
@@ -114,7 +106,7 @@ export default function Analytics() {
           </div>
         )}
 
-        {/* Spec Formula Banner */}
+        {/* Evaluation Banner */}
         <div className="bg-ink-950 text-canvas border border-ink-800 rounded-sm p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-signal-amber font-display font-semibold text-sm tracking-wider uppercase">
@@ -130,18 +122,27 @@ export default function Analytics() {
               </code>
             </p>
           </div>
-          <div className="bg-ink-900 border border-ink-800 rounded-sm p-4 text-center font-mono flex flex-col items-center gap-3 min-w-[150px]">
+          <div className="bg-ink-900 border border-ink-800 rounded-sm p-4 text-center font-mono flex flex-col items-center gap-3 min-w-[170px]">
             <div>
               <p className="text-[10px] text-ink-500 uppercase tracking-widest">Active Formula</p>
               <p className="text-lg font-bold text-rail-green">100% Compliant</p>
             </div>
-            <button 
-              onClick={exportToCSV}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-ink-950 hover:bg-ink-800 text-canvas text-xs font-semibold rounded-sm transition-colors cursor-pointer border border-ink-850"
-            >
-              <Download size={12} />
-              Export ROI CSV
-            </button>
+            <div className="flex flex-col gap-2 w-full">
+              <button 
+                onClick={exportToCSV}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-ink-950 hover:bg-ink-800 text-canvas text-xs font-semibold rounded-sm transition-colors cursor-pointer border border-ink-850"
+              >
+                <Download size={12} />
+                Export ROI CSV
+              </button>
+              <button 
+                onClick={() => window.print()}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-signal-amber hover:bg-signal-amber/90 text-ink-950 text-xs font-bold rounded-sm transition-colors cursor-pointer"
+              >
+                <FileText size={12} />
+                Export PDF Report
+              </button>
+            </div>
           </div>
         </div>
 

@@ -198,12 +198,12 @@ def seed_database():
         db.commit()
 
         # ── Vehicles Setup ───────────────────────────────────────────
-        print("Initializing 100 Vehicles...")
+        print("Initializing 15 Vehicles...")
         vehicles_data = []
         used_reg = set()
         now = datetime.utcnow()
 
-        for i in range(100):
+        for i in range(15):
             v_type = random.choice(VEHICLE_TYPES)
             rto = random.choice(RTO_CODES)
             while True:
@@ -246,12 +246,12 @@ def seed_database():
             db.refresh(item["model"])
 
         # ── Drivers Setup ────────────────────────────────────────────
-        print("Initializing 200 Drivers...")
+        print("Initializing 18 Drivers...")
         drivers_data = []
         used_names = set()
         used_lic = set()
 
-        for i in range(200):
+        for i in range(18):
             while True:
                 fname = random.choice(INDIAN_FIRST_NAMES)
                 lname = random.choice(INDIAN_LAST_NAMES)
@@ -311,16 +311,16 @@ def seed_database():
             else:
                 return driver_cat in ("HMV", "HGMV", "HTV")
 
-        # ── Chronological Trips Simulation (500 Trips) ────────────────
-        print("Simulating 500 Trips Chronologically...")
+        # ── Chronological Trips Simulation (25 Trips) ────────────────
+        print("Simulating 25 Trips Chronologically...")
         
         # We will stagger trips over the past 90 days
-        # 420 Completed, 15 Dispatched, 45 Draft, 20 Cancelled
+        # 15 Completed, 3 Dispatched, 5 Draft, 2 Cancelled
         trip_statuses = (
-            [TripStatus.COMPLETED] * 420 +
-            [TripStatus.DISPATCHED] * 15 +
-            [TripStatus.DRAFT] * 45 +
-            [TripStatus.CANCELLED] * 20
+            [TripStatus.COMPLETED] * 15 +
+            [TripStatus.DISPATCHED] * 3 +
+            [TripStatus.DRAFT] * 5 +
+            [TripStatus.CANCELLED] * 2
         )
         random.shuffle(trip_statuses)
 

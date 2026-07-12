@@ -167,4 +167,22 @@ d_del_get = requests.get(f"{BASE_URL}/drivers/{d_id}", headers=fm_headers)
 assert v_del_get.status_code == 404
 assert d_del_get.status_code == 404
 
+# 17. Cargo weight limits check on trip creation (Expect 400)
+print("\n[Test 17] Attempting to create a Trip with excessive cargo weight...")
+# V-101 has capacity_kg = 8000.0, Driver 3 is Available
+trip_payload = {
+    "trip_code": "TEST-TRIP-OVERWEIGHT",
+    "vehicle_id": 1, 
+    "driver_id": 3, 
+    "source": "City A",
+    "destination": "City B",
+    "cargo_weight": 50000000000.0, 
+    "planned_distance": 100.0,
+    "revenue": 2000.0
+}
+trip_response = requests.post(f"{BASE_URL}/trips", json=trip_payload, headers=disp_headers)
+print(f"Excessive cargo trip status: {trip_response.status_code}, detail: {trip_response.json()}")
+assert trip_response.status_code == 400
+assert "exceeds" in trip_response.json()["detail"].lower()
+
 print("\n--- ALL COMPREHENSIVE TESTS PASSED SUCCESSFULLY! ---")

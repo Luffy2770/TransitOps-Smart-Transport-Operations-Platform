@@ -6,16 +6,12 @@ import {
   Shield, 
   User, 
   Lock, 
-  Database, 
   AlertTriangle, 
-  CheckCircle,
-  RefreshCw,
-  LogOut
+  CheckCircle
 } from 'lucide-react'
 
 export default function Settings() {
-  const { user, logout } = useAuth()
-  const isManager = user?.role === 'Fleet Manager'
+  const { user } = useAuth()
 
   // Change Password Form
   const [currentPassword, setCurrentPassword] = useState('')
@@ -24,12 +20,6 @@ export default function Settings() {
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
   const [passwordLoading, setPasswordLoading] = useState(false)
-
-  // DB Reset State
-  const [resetLoading, setResetLoading] = useState(false)
-  const [resetSuccess, setResetSuccess] = useState('')
-  const [resetError, setResetError] = useState('')
-  const [confirmReset, setConfirmReset] = useState(false)
 
   async function handlePasswordSubmit(e) {
     e.preventDefault()
@@ -59,37 +49,9 @@ export default function Settings() {
     }
   }
 
-  async function handleResetDatabase() {
-    if (!confirmReset) {
-      setConfirmReset(true)
-      return
-    }
-
-    setResetLoading(true)
-    setResetError('')
-    setResetSuccess('')
-
-    try {
-      await api.post('/auth/reset-db')
-      setResetSuccess('Database reset and re-seeded successfully!')
-      setConfirmReset(false)
-      
-      // Auto logout to refresh token and database alignment
-      setTimeout(() => {
-        logout()
-      }, 2000)
-    } catch (err) {
-      const detail = err.response?.data?.detail
-      setResetError(typeof detail === 'string' ? detail : 'Failed to reset database.')
-      setConfirmReset(false)
-    } finally {
-      setResetLoading(false)
-    }
-  }
-
   return (
     <div className="min-h-full">
-      <Topbar title="System Settings" subtitle="Configure profile settings, passwords, and database utilities" />
+      <Topbar title="System Settings" subtitle="Configure profile settings and credentials" />
 
       <div className="p-8 space-y-8 max-w-4xl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -189,60 +151,6 @@ export default function Settings() {
           </div>
 
         </div>
-
-        {/* Database Utilities Panel (Fleet Manager only) */}
-        {isManager && (
-          <div className="bg-canvas-raised border border-paper-line rounded-sm p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-paper-line">
-              <Database className="text-alert-red" size={18} />
-              <h4 className="font-display font-semibold text-slate-ink text-sm">System Database Utilities</h4>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-canvas p-4 border border-paper-line rounded-sm">
-              <div className="space-y-1">
-                <h5 className="text-sm font-semibold text-slate-ink flex items-center gap-1.5">
-                  <AlertTriangle className="text-signal-amber" size={16} />
-                  Reset & Seed Database
-                </h5>
-                <p className="text-xs text-ink-500 max-w-xl">
-                  Re-initialize the SQLite database back to its factory default state. This will drop all tables, reseed mock roles, users, vehicles, drivers, and initial trips history.
-                </p>
-              </div>
-
-              <button
-                onClick={handleResetDatabase}
-                disabled={resetLoading}
-                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-sm text-xs font-mono font-bold border transition-colors cursor-pointer disabled:opacity-50 ${
-                  confirmReset 
-                    ? 'bg-alert-red hover:bg-alert-red/90 text-canvas border-alert-red' 
-                    : 'bg-canvas hover:bg-canvas-raised text-alert-red border-alert-red/30'
-                }`}
-              >
-                {resetLoading ? (
-                  <RefreshCw className="animate-spin" size={14} />
-                ) : confirmReset ? (
-                  'Confirm Factory Reset'
-                ) : (
-                  'Reset Database'
-                )}
-              </button>
-            </div>
-
-            {resetSuccess && (
-              <div className="flex items-center gap-2 rounded-sm border border-rail-green/30 bg-rail-green-dim px-3 py-2 text-xs text-rail-green animate-fade-in">
-                <CheckCircle size={14} className="flex-shrink-0" />
-                <span>{resetSuccess} Logging out...</span>
-              </div>
-            )}
-
-            {resetError && (
-              <div className="flex items-center gap-2 rounded-sm border border-alert-red/30 bg-alert-red-dim px-3 py-2 text-xs text-alert-red animate-fade-in">
-                <AlertTriangle size={14} className="flex-shrink-0" />
-                <span>{resetError}</span>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

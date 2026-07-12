@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Topbar } from '@/components/Topbar'
-import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download } from 'lucide-react'
 import { 
   BarChart, 
   Bar, 
@@ -36,6 +36,42 @@ export default function Analytics() {
     fetchAnalytics()
   }, [])
 
+  function exportToCSV() {
+    if (!roiData || roiData.length === 0) return
+
+    const headers = [
+      'Registration Number',
+      'Name',
+      'Acquisition Cost ($)',
+      'Total Revenue ($)',
+      'Maintenance Cost ($)',
+      'Fuel Cost ($)',
+      'ROI (%)'
+    ]
+
+    const rows = roiData.map(item => [
+      item.registration_number,
+      item.name,
+      item.acquisition_cost,
+      item.total_revenue,
+      item.total_maintenance_cost,
+      item.total_fuel_cost,
+      item.roi_percentage
+    ])
+
+    const csvContent = 
+      'data:text/csv;charset=utf-8,' + 
+      [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `transitops_fleet_roi_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="min-h-full">
       <Topbar title="Fleet Analytics" subtitle="Investment returns and cost efficiency analysis" />
@@ -64,9 +100,18 @@ export default function Analytics() {
               </code>
             </p>
           </div>
-          <div className="bg-ink-900 border border-ink-800 rounded-sm p-4 text-center font-mono">
-            <p className="text-[10px] text-ink-500 uppercase tracking-widest">Active Formula</p>
-            <p className="text-lg font-bold text-rail-green">100% Compliant</p>
+          <div className="bg-ink-900 border border-ink-800 rounded-sm p-4 text-center font-mono flex flex-col items-center gap-3 min-w-[150px]">
+            <div>
+              <p className="text-[10px] text-ink-500 uppercase tracking-widest">Active Formula</p>
+              <p className="text-lg font-bold text-rail-green">100% Compliant</p>
+            </div>
+            <button 
+              onClick={exportToCSV}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-ink-950 hover:bg-ink-800 text-canvas text-xs font-semibold rounded-sm transition-colors cursor-pointer border border-ink-850"
+            >
+              <Download size={12} />
+              Export ROI CSV
+            </button>
           </div>
         </div>
 

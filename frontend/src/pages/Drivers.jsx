@@ -13,7 +13,10 @@ import {
   AlertTriangle, 
   CheckCircle,
   Calendar,
-  Phone
+  Phone,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 
 export default function Drivers() {
@@ -28,6 +31,10 @@ export default function Drivers() {
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+
+  // Sort state
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
 
   // Form State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -52,6 +59,8 @@ export default function Drivers() {
     try {
       const params = new URLSearchParams()
       if (statusFilter) params.append('status', statusFilter)
+      params.append('sort_by', sortBy)
+      params.append('sort_order', sortOrder)
 
       const res = await api.get(`/drivers?${params.toString()}`)
       setDrivers(res.data)
@@ -66,7 +75,28 @@ export default function Drivers() {
 
   useEffect(() => {
     fetchDrivers()
-  }, [statusFilter])
+  }, [statusFilter, sortBy, sortOrder])
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('desc')
+    }
+  }
+
+  function SortIcon({ field }) {
+    if (sortBy !== field) return <ArrowUpDown size={13} className="opacity-40" />
+    return sortOrder === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return '—'
+    const d = new Date(ts)
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+      d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  }
 
   // Clear success notification after 4s
   useEffect(() => {
@@ -242,13 +272,24 @@ export default function Drivers() {
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider">
-                    <th className="px-6 py-4 font-semibold">Name</th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('name')}>
+                      <span className="inline-flex items-center gap-1">Name <SortIcon field="name" /></span>
+                    </th>
                     <th className="px-6 py-4 font-semibold">License Number</th>
                     <th className="px-6 py-4 font-semibold">License Category</th>
                     <th className="px-6 py-4 font-semibold">Contact</th>
-                    <th className="px-6 py-4 font-semibold">Expiry Date</th>
-                    <th className="px-6 py-4 font-semibold">Safety Score</th>
-                    <th className="px-6 py-4 font-semibold">Status</th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('license_expiry')}>
+                      <span className="inline-flex items-center gap-1">Expiry Date <SortIcon field="license_expiry" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('safety_score')}>
+                      <span className="inline-flex items-center gap-1">Safety Score <SortIcon field="safety_score" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('status')}>
+                      <span className="inline-flex items-center gap-1">Status <SortIcon field="status" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('created_at')}>
+                      <span className="inline-flex items-center gap-1">Registered On <SortIcon field="created_at" /></span>
+                    </th>
                     {isManager && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -270,6 +311,7 @@ export default function Drivers() {
                       <td className="px-6 py-4">
                         <StatusBadge status={driver.status} />
                       </td>
+                      <td className="px-6 py-4 text-xs text-ink-500 whitespace-nowrap">{formatTimestamp(driver.created_at)}</td>
                       {isManager && (
                         <td className="px-6 py-4 text-right">
                           <div className="inline-flex gap-2">

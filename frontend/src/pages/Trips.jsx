@@ -14,7 +14,10 @@ import {
   Ban,
   DollarSign,
   Navigation,
-  Scale
+  Scale,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 
 export default function Trips() {
@@ -32,6 +35,10 @@ export default function Trips() {
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+
+  // Sort state
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
 
   // Modals State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -66,7 +73,7 @@ export default function Trips() {
     setLoading(true)
     try {
       const [tripsRes, vehiclesRes, driversRes] = await Promise.all([
-        api.get('/trips'),
+        api.get(`/trips?sort_by=${sortBy}&sort_order=${sortOrder}`),
         api.get('/vehicles'),
         api.get('/drivers')
       ])
@@ -84,7 +91,28 @@ export default function Trips() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [sortBy, sortOrder])
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('desc')
+    }
+  }
+
+  function SortIcon({ field }) {
+    if (sortBy !== field) return <ArrowUpDown size={13} className="opacity-40" />
+    return sortOrder === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return '—'
+    const d = new Date(ts)
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+      d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  }
 
   useEffect(() => {
     if (successMsg) {
@@ -311,14 +339,27 @@ export default function Trips() {
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider">
-                    <th className="px-6 py-4 font-semibold">Trip Code</th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('trip_code')}>
+                      <span className="inline-flex items-center gap-1">Trip Code <SortIcon field="trip_code" /></span>
+                    </th>
                     <th className="px-6 py-4 font-semibold">Vehicle</th>
                     <th className="px-6 py-4 font-semibold">Driver</th>
                     <th className="px-6 py-4 font-semibold">Route</th>
-                    <th className="px-6 py-4 font-semibold">Cargo (kg)</th>
-                    <th className="px-6 py-4 font-semibold">Planned Dist.</th>
-                    <th className="px-6 py-4 font-semibold">Revenue</th>
-                    <th className="px-6 py-4 font-semibold">Status</th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('cargo_weight')}>
+                      <span className="inline-flex items-center gap-1">Cargo (kg) <SortIcon field="cargo_weight" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('planned_distance')}>
+                      <span className="inline-flex items-center gap-1">Planned Dist. <SortIcon field="planned_distance" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('revenue')}>
+                      <span className="inline-flex items-center gap-1">Revenue <SortIcon field="revenue" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('status')}>
+                      <span className="inline-flex items-center gap-1">Status <SortIcon field="status" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('created_at')}>
+                      <span className="inline-flex items-center gap-1">Created <SortIcon field="created_at" /></span>
+                    </th>
                     {isAuthorized && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -337,6 +378,7 @@ export default function Trips() {
                       <td className="px-6 py-4">
                         <StatusBadge status={trip.status} />
                       </td>
+                      <td className="px-6 py-4 text-xs text-ink-500 whitespace-nowrap">{formatTimestamp(trip.created_at)}</td>
                       {isAuthorized && (
                         <td className="px-6 py-4 text-right">
                           <div className="inline-flex gap-2">

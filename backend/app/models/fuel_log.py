@@ -3,9 +3,10 @@ from sqlalchemy import Date, Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.models.mixins import TimestampMixin
 
 
-class FuelLog(Base):
+class FuelLog(TimestampMixin, Base):
     __tablename__ = "fuel_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -16,4 +17,4 @@ class FuelLog(Base):
     cost: Mapped[float] = mapped_column(Float, nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
 
-    vehicle = relationship("Vehicle", back_populates="fuel_logs")
+    vehicle = relationship("Vehicle", back_populates="fuel_logs")

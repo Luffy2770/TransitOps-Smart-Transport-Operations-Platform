@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc
 
 from app.database.database import get_db
 from app.models.trip import Trip
@@ -18,16 +19,32 @@ router = APIRouter(prefix="/trips", tags=["Trips"])
 require_dispatcher_or_manager = Depends(RoleChecker(["Fleet Manager", "Dispatcher"]))
 require_any_authenticated = Depends(get_current_user)
 
+TRIP_SORT_FIELDS = {
+    "created_at": Trip.created_at,
+    "updated_at": Trip.updated_at,
+    "trip_code": Trip.trip_code,
+    "status": Trip.status,
+    "cargo_weight": Trip.cargo_weight,
+    "planned_distance": Trip.planned_distance,
+    "revenue": Trip.revenue,
+    "dispatch_time": Trip.dispatch_time,
+    "completion_time": Trip.completion_time,
+}
+
 
 @router.get("", response_model=List[TripOut])
 def list_trips(
     status: Optional[TripStatus] = None,
+    sort_by: Optional[str] = "created_at",
+    sort_order: Optional[str] = "desc",
     db: Session = Depends(get_db),
     _current_user=require_any_authenticated,
 ):
     query = db.query(Trip)
     if status:
         query = query.filter(Trip.status == status)
+    sort_col = TRIP_SORT_FIELDS.get(sort_by, Trip.created_at)
+    query = query.order_by(desc(sort_col) if sort_order == "desc" else asc(sort_col))
     return query.all()
 
 

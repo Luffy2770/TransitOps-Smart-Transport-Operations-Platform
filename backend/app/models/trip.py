@@ -5,9 +5,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.core.enums import TripStatus
+from app.models.mixins import TimestampMixin
 
 
-class Trip(Base):
+class Trip(TimestampMixin, Base):
     __tablename__ = "trips"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -47,4 +48,4 @@ class Trip(Base):
 
     vehicle = relationship("Vehicle", back_populates="trips")
     driver = relationship("Driver", back_populates="trips")
-    expenses = relationship("Expense", back_populates="trip")
+    expenses = relationship("Expense", back_populates="trip")

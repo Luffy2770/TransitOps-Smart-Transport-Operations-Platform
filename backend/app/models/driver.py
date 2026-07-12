@@ -4,9 +4,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.core.enums import DriverStatus
+from app.models.mixins import TimestampMixin
 
 
-class Driver(Base):
+class Driver(TimestampMixin, Base):
     __tablename__ = "drivers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -24,4 +25,4 @@ class Driver(Base):
         nullable=False,
     )
 
-    trips = relationship("Trip", back_populates="driver")
+    trips = relationship("Trip", back_populates="driver")

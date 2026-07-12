@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 from app.core.enums import VehicleStatus
@@ -29,5 +30,8 @@ class VehicleUpdate(BaseModel):
 class VehicleOut(VehicleBase):
     id: int
     status: VehicleStatus
+    created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
+

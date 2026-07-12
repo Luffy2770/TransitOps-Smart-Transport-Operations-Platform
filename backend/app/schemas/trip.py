@@ -46,5 +46,8 @@ class TripOut(TripBase):
     end_odometer: Optional[float] = None
     fuel_used: Optional[float] = None
     status: TripStatus
+    created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
+

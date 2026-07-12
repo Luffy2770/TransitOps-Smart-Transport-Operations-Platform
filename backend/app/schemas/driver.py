@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel
 from app.core.enums import DriverStatus
@@ -30,5 +30,8 @@ class DriverUpdate(BaseModel):
 class DriverOut(DriverBase):
     id: int
     status: DriverStatus
+    created_at: datetime
+    updated_at: datetime
 
     model_config = {"from_attributes": True}
+

@@ -13,7 +13,10 @@ import {
   AlertTriangle, 
   CheckCircle,
   FileText,
-  DollarSign
+  DollarSign,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 
 export default function Fleet() {
@@ -29,6 +32,10 @@ export default function Fleet() {
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+
+  // Sort state
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
 
   // Form State
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -55,6 +62,8 @@ export default function Fleet() {
       const params = new URLSearchParams()
       if (typeFilter) params.append('type', typeFilter)
       if (statusFilter) params.append('status', statusFilter)
+      params.append('sort_by', sortBy)
+      params.append('sort_order', sortOrder)
 
       const res = await api.get(`/vehicles?${params.toString()}`)
       setVehicles(res.data)
@@ -69,7 +78,28 @@ export default function Fleet() {
 
   useEffect(() => {
     fetchVehicles()
-  }, [typeFilter, statusFilter])
+  }, [typeFilter, statusFilter, sortBy, sortOrder])
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('desc')
+    }
+  }
+
+  function SortIcon({ field }) {
+    if (sortBy !== field) return <ArrowUpDown size={13} className="opacity-40" />
+    return sortOrder === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return '—'
+    const d = new Date(ts)
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+      d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  }
 
   // Clear success notification after 4s
   useEffect(() => {
@@ -257,13 +287,28 @@ export default function Fleet() {
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider">
-                    <th className="px-6 py-4 font-semibold">Reg. Number</th>
-                    <th className="px-6 py-4 font-semibold">Model / Name</th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('registration_number')}>
+                      <span className="inline-flex items-center gap-1">Reg. Number <SortIcon field="registration_number" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('name')}>
+                      <span className="inline-flex items-center gap-1">Model / Name <SortIcon field="name" /></span>
+                    </th>
                     <th className="px-6 py-4 font-semibold">Type</th>
-                    <th className="px-6 py-4 font-semibold">Capacity (kg)</th>
-                    <th className="px-6 py-4 font-semibold">Odometer (km)</th>
-                    <th className="px-6 py-4 font-semibold">Acq. Cost</th>
-                    <th className="px-6 py-4 font-semibold">Status</th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('capacity_kg')}>
+                      <span className="inline-flex items-center gap-1">Capacity (kg) <SortIcon field="capacity_kg" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('odometer')}>
+                      <span className="inline-flex items-center gap-1">Odometer (km) <SortIcon field="odometer" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('acquisition_cost')}>
+                      <span className="inline-flex items-center gap-1">Acq. Cost <SortIcon field="acquisition_cost" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('status')}>
+                      <span className="inline-flex items-center gap-1">Status <SortIcon field="status" /></span>
+                    </th>
+                    <th className="px-6 py-4 font-semibold cursor-pointer select-none" onClick={() => handleSort('created_at')}>
+                      <span className="inline-flex items-center gap-1">Added On <SortIcon field="created_at" /></span>
+                    </th>
                     {isManager && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
                   </tr>
                 </thead>
@@ -279,6 +324,7 @@ export default function Fleet() {
                       <td className="px-6 py-4">
                         <StatusBadge status={vehicle.status} />
                       </td>
+                      <td className="px-6 py-4 text-xs text-ink-500 whitespace-nowrap">{formatTimestamp(vehicle.created_at)}</td>
                       {isManager && (
                         <td className="px-6 py-4 text-right">
                           <div className="inline-flex gap-2">

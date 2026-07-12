@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc
 
 from app.database.database import get_db
 from app.models.driver import Driver
@@ -15,16 +16,29 @@ router = APIRouter(prefix="/drivers", tags=["Drivers"])
 require_fleet_manager = Depends(RoleChecker(["Fleet Manager"]))
 require_any_authenticated = Depends(get_current_user)
 
+DRIVER_SORT_FIELDS = {
+    "created_at": Driver.created_at,
+    "updated_at": Driver.updated_at,
+    "name": Driver.name,
+    "status": Driver.status,
+    "safety_score": Driver.safety_score,
+    "license_expiry": Driver.license_expiry,
+}
+
 
 @router.get("", response_model=List[DriverOut])
 def list_drivers(
     status: Optional[DriverStatus] = None,
+    sort_by: Optional[str] = "created_at",
+    sort_order: Optional[str] = "desc",
     db: Session = Depends(get_db),
     _current_user=require_any_authenticated,
 ):
     query = db.query(Driver)
     if status:
         query = query.filter(Driver.status == status)
+    sort_col = DRIVER_SORT_FIELDS.get(sort_by, Driver.created_at)
+    query = query.order_by(desc(sort_col) if sort_order == "desc" else asc(sort_col))
     return query.all()
 
 

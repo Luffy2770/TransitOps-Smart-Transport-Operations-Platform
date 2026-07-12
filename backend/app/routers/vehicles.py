@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc
 
 from app.database.database import get_db
 from app.models.vehicle import Vehicle
@@ -15,11 +16,24 @@ router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
 require_fleet_manager = Depends(RoleChecker(["Fleet Manager"]))
 require_any_authenticated = Depends(get_current_user)
 
+VEHICLE_SORT_FIELDS = {
+    "created_at": Vehicle.created_at,
+    "updated_at": Vehicle.updated_at,
+    "name": Vehicle.name,
+    "registration_number": Vehicle.registration_number,
+    "status": Vehicle.status,
+    "capacity_kg": Vehicle.capacity_kg,
+    "odometer": Vehicle.odometer,
+    "acquisition_cost": Vehicle.acquisition_cost,
+}
+
 
 @router.get("", response_model=List[VehicleOut])
 def list_vehicles(
     type: Optional[str] = None,
     status: Optional[VehicleStatus] = None,
+    sort_by: Optional[str] = "created_at",
+    sort_order: Optional[str] = "desc",
     db: Session = Depends(get_db),
     _current_user=require_any_authenticated,
 ):
@@ -28,6 +42,9 @@ def list_vehicles(
         query = query.filter(Vehicle.type == type)
     if status:
         query = query.filter(Vehicle.status == status)
+
+    sort_col = VEHICLE_SORT_FIELDS.get(sort_by, Vehicle.created_at)
+    query = query.order_by(desc(sort_col) if sort_order == "desc" else asc(sort_col))
     return query.all()
 
 

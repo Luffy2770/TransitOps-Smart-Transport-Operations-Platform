@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Topbar } from '@/components/Topbar'
 import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download, ArrowUpDown, ArrowUp, ArrowDown, FileText } from 'lucide-react'
+import { jsPDF } from 'jspdf'
 import { 
   BarChart, 
   Bar, 
@@ -94,6 +95,106 @@ export default function Analytics() {
     document.body.removeChild(link)
   }
 
+  // Direct PDF Export using jsPDF
+  function exportToPDF() {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+
+    // Header Panel
+    doc.setFillColor(11, 17, 32) // deep navy #0B1120
+    doc.rect(0, 0, 210, 38, 'F')
+    
+    doc.setTextColor(247, 245, 240) // canvas #F7F5F0
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(20)
+    doc.text('TransitOps Smart Platform', 15, 15)
+    
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.text('Fleet Financial Analytics & Return on Investment (ROI) Report', 15, 22)
+    doc.text(`Generated On: ${new Date().toLocaleString()}`, 15, 28)
+
+    // Table Header Background
+    doc.setFillColor(42, 53, 72) // slate-700
+    doc.rect(15, 48, 180, 8, 'F')
+    
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Vehicle', 18, 53)
+    doc.text('Acq. Cost', 50, 53)
+    doc.text('Revenue', 80, 53)
+    doc.text('Maintenance', 110, 53)
+    doc.text('Fuel Costs', 140, 53)
+    doc.text('ROI %', 175, 53)
+
+    // Render Data Rows
+    let y = 62
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(28, 34, 48) // slate-ink
+    
+    sortedRoiData.forEach((row, i) => {
+      // Row background shading (Zebra striping)
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 243, 238)
+        doc.rect(15, y - 5, 180, 7, 'F')
+      }
+      
+      doc.text(row.registration_number || '—', 18, y)
+      doc.text(`$${row.acquisition_cost.toLocaleString()}`, 50, y)
+      doc.text(`$${row.total_revenue.toLocaleString()}`, 80, y)
+      doc.text(`$${row.total_maintenance_cost.toLocaleString()}`, 110, y)
+      doc.text(`$${row.total_fuel_cost.toLocaleString()}`, 140, y)
+      
+      const roiVal = row.roi_percentage
+      const roiText = `${roiVal.toFixed(1)}%`
+      
+      if (roiVal >= 0) {
+        doc.setTextColor(47, 107, 79) // rail green
+      } else {
+        doc.setTextColor(196, 67, 43) // alert red
+      }
+      doc.text(roiText, 175, y)
+      doc.setTextColor(28, 34, 48) // Reset to standard body text
+      
+      y += 7
+      
+      // Prevent page overflow by adding a new page automatically
+      if (y > 272) {
+        doc.addPage()
+        y = 22
+        
+        // Re-render table header on new page
+        doc.setFillColor(42, 53, 72)
+        doc.rect(15, y - 5, 180, 8, 'F')
+        doc.setTextColor(255, 255, 255)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Vehicle', 18, y)
+        doc.text('Acq. Cost', 50, y)
+        doc.text('Revenue', 80, y)
+        doc.text('Maintenance', 110, y)
+        doc.text('Fuel Costs', 140, y)
+        doc.text('ROI %', 175, y)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(28, 34, 48)
+        y += 9
+      }
+    })
+
+    // Footer divider and statement
+    doc.setStrokeColor(228, 224, 214)
+    doc.line(15, 282, 195, 282)
+    
+    doc.setFontSize(7.5)
+    doc.setTextColor(90, 106, 130)
+    doc.text('TransitOps Operations Control Center - Confidential Generated Telemetry Report', 15, 287)
+
+    doc.save(`TransitOps_ROI_Report_${new Date().toISOString().slice(0, 10)}.pdf`)
+  }
+
   return (
     <div className="min-h-full">
       <Topbar title="Financial Analytics" subtitle="Evaluation of return on investment (ROI)" />
@@ -136,7 +237,7 @@ export default function Analytics() {
                 Export ROI CSV
               </button>
               <button 
-                onClick={() => window.print()}
+                onClick={exportToPDF}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-signal-amber hover:bg-signal-amber/90 text-ink-950 text-xs font-bold rounded-sm transition-colors cursor-pointer"
               >
                 <FileText size={12} />

@@ -1,11 +1,18 @@
 """
-TransitOps – Realistic Seed Data Generator
-============================================
-Generates a production-grade dataset for demo / hackathon evaluation:
-  • 100 vehicles   (Trucks, Vans, Minis, Tankers, Trailers)
-  • 200 drivers    (realistic Indian names, license data)
-  • 500 trips      (real Indian city-pair routes, 90-day history)
-  • Fuel logs, Maintenance logs, Expenses auto-generated
+TransitOps – Realistic & Consistent Seed Data Generator
+======================================================
+Generates a mathematically and operationally consistent dataset:
+  - 100 Vehicles (Trucks, Vans, Minis, Tankers, Trailers)
+  - 200 Drivers (with realistic Indian names and compatible licenses)
+  - 500 Trips (420 Completed, 15 Dispatched, 45 Draft, 20 Cancelled)
+  - Consistent statuses:
+    * Vehicles and Drivers on active (Dispatched) trips are marked 'On Trip'.
+    * Drivers/vehicles cannot be on multiple active trips at the same time.
+    * Vehicles in active maintenance are marked 'In Shop'.
+    * Drivers with expired licenses or low safety scores are 'Suspended'.
+  - Timeline consistency:
+    * Historical completed trips update the vehicle's odometer step-by-step.
+    * Fuel logs and maintenance logs align with the dates/distances of the vehicles.
 """
 
 from datetime import date, datetime, timedelta
@@ -117,7 +124,6 @@ RTO_CODES = [
     "PB-02", "PB-10",
 ]
 
-# Real Indian city-pair routes with approximate distances (km)
 ROUTES = [
     ("Mumbai", "Pune", 150), ("Mumbai", "Nashik", 170), ("Mumbai", "Surat", 290),
     ("Mumbai", "Ahmedabad", 530), ("Mumbai", "Goa", 590), ("Mumbai", "Nagpur", 820),
@@ -150,14 +156,8 @@ SERVICE_TYPES = [
     "Headlight Restoration", "Windshield Wiper Replacement",
 ]
 
-LICENSE_CATEGORIES = ["LMV", "HMV", "HGMV", "HTV"]
-
-# ──────────────────────────────────────────────────────────────────────
-# Generator
-# ──────────────────────────────────────────────────────────────────────
-
 def seed_database():
-    random.seed(42)  # Reproducible data
+    random.seed(1337)  # Set seed for reproducibility
 
     print("Dropping existing tables...")
     Base.metadata.drop_all(bind=engine)
@@ -178,8 +178,8 @@ def seed_database():
         for name in roles:
             db.refresh(roles[name])
 
-        # ── Users (4 staff accounts) ────────────────────────────────
-        print("Seeding Users...")
+        # ── Users ────────────────────────────────────────────────────
+        print("Seeding Staff Users...")
         users = [
             User(name="System Administrator", email="admin@transitops.com",
                  password_hash=hash_password("admin123"),
@@ -197,16 +197,15 @@ def seed_database():
         db.add_all(users)
         db.commit()
 
-        # ── 100 Vehicles ────────────────────────────────────────────
-        print("Seeding 100 Vehicles...")
-        vehicles = []
+        # ── Vehicles Setup ───────────────────────────────────────────
+        print("Initializing 100 Vehicles...")
+        vehicles_data = []
         used_reg = set()
         now = datetime.utcnow()
 
         for i in range(100):
             v_type = random.choice(VEHICLE_TYPES)
             rto = random.choice(RTO_CODES)
-            # Generate unique registration number
             while True:
                 suffix = f"{random.randint(1000, 9999)}"
                 letter = random.choice("ABCDEFGHJKLMNPRSTUVWXYZ")
@@ -217,49 +216,42 @@ def seed_database():
 
             cap_lo, cap_hi = CAPACITY_RANGE[v_type]
             cost_lo, cost_hi = COST_RANGE[v_type]
+            
+            # Start vehicles with a base odometer of 5,000 - 50,000 km
+            initial_odo = round(random.uniform(5000, 50000), 1)
+            days_ago = random.randint(100, 730)
+            created = now - timedelta(days=days_ago)
 
-            # Determine status: most Available, some On Trip, few In Shop/Retired
-            status_roll = random.random()
-            if status_roll < 0.55:
-                v_status = VehicleStatus.AVAILABLE
-            elif status_roll < 0.80:
-                v_status = VehicleStatus.ON_TRIP
-            elif status_roll < 0.93:
-                v_status = VehicleStatus.IN_SHOP
-            else:
-                v_status = VehicleStatus.RETIRED
-
-            # Stagger created_at over the past 2 years
-            days_ago = random.randint(30, 730)
-            created = now - timedelta(days=days_ago, hours=random.randint(0, 23),
-                                       minutes=random.randint(0, 59))
-
-            vehicle = Vehicle(
+            v = Vehicle(
                 registration_number=reg,
                 name=random.choice(VEHICLE_NAMES[v_type]),
                 type=v_type,
                 capacity_kg=round(random.uniform(cap_lo, cap_hi), 0),
-                status=v_status,
+                status=VehicleStatus.AVAILABLE,  # Temporary
                 acquisition_cost=round(random.uniform(cost_lo, cost_hi), 0),
-                odometer=round(random.uniform(5000, 250000), 1),
+                odometer=initial_odo,
                 created_at=created,
-                updated_at=created + timedelta(days=random.randint(0, 30)),
+                updated_at=created
             )
-            db.add(vehicle)
-            vehicles.append(vehicle)
-
+            db.add(v)
+            vehicles_data.append({
+                "model": v,
+                "type": v_type,
+                "current_odo": initial_odo,
+                "last_active_time": created
+            })
+        
         db.commit()
-        for v in vehicles:
-            db.refresh(v)
+        for item in vehicles_data:
+            db.refresh(item["model"])
 
-        # ── 200 Drivers ─────────────────────────────────────────────
-        print("Seeding 200 Drivers...")
-        drivers = []
+        # ── Drivers Setup ────────────────────────────────────────────
+        print("Initializing 200 Drivers...")
+        drivers_data = []
         used_names = set()
         used_lic = set()
 
         for i in range(200):
-            # Generate unique name
             while True:
                 fname = random.choice(INDIAN_FIRST_NAMES)
                 lname = random.choice(INDIAN_LAST_NAMES)
@@ -268,178 +260,290 @@ def seed_database():
                     used_names.add(full)
                     break
 
-            # Generate unique license number
             while True:
-                state_code = random.choice(["MH", "DL", "KA", "TN", "GJ", "RJ", "UP",
-                                             "WB", "AP", "TS", "KL", "MP", "HR", "PB"])
+                state_code = random.choice(["MH", "DL", "KA", "TN", "GJ", "RJ", "UP", "WB", "AP", "TS", "KL", "MP"])
                 lic_num = f"{state_code}-{random.randint(10, 99)}-{random.randint(100000, 999999)}"
                 if lic_num not in used_lic:
                     used_lic.add(lic_num)
                     break
 
-            # Status distribution: ~55% Available, ~20% On Trip, ~15% Off Duty, ~10% Suspended
-            status_roll = random.random()
-            if status_roll < 0.55:
-                d_status = DriverStatus.AVAILABLE
-            elif status_roll < 0.75:
-                d_status = DriverStatus.ON_TRIP
-            elif status_roll < 0.90:
-                d_status = DriverStatus.OFF_DUTY
+            # Assign category: LMV for light vehicle drivers, others HMV/HTV
+            lic_cat = "LMV" if random.random() < 0.35 else random.choice(["HMV", "HGMV", "HTV"])
+            
+            # Most drivers have long license validity, a few are near expiry or expired
+            expiry_roll = random.random()
+            if expiry_roll < 0.05:
+                expiry = date.today() - timedelta(days=random.randint(1, 60))
+            elif expiry_roll < 0.12:
+                expiry = date.today() + timedelta(days=random.randint(1, 30))
             else:
-                d_status = DriverStatus.SUSPENDED
+                expiry = date.today() + timedelta(days=random.randint(90, 1000))
 
-            # License expiry: most valid, some expired
-            if random.random() < 0.10:
-                expiry = date.today() - timedelta(days=random.randint(5, 180))
-            else:
-                expiry = date.today() + timedelta(days=random.randint(60, 1200))
+            days_ago = random.randint(100, 730)
+            created = now - timedelta(days=days_ago)
 
-            days_ago = random.randint(30, 700)
-            created = now - timedelta(days=days_ago, hours=random.randint(0, 23))
-
-            driver = Driver(
+            d = Driver(
                 name=full,
                 license_number=lic_num,
-                license_category=random.choice(LICENSE_CATEGORIES),
+                license_category=lic_cat,
                 contact_number=f"+91{random.randint(7000000000, 9999999999)}",
                 license_expiry=expiry,
-                safety_score=round(random.uniform(60.0, 100.0), 1),
-                status=d_status,
+                safety_score=round(random.uniform(75.0, 100.0), 1),
+                status=DriverStatus.AVAILABLE, # Temporary
                 created_at=created,
-                updated_at=created + timedelta(days=random.randint(0, 20)),
+                updated_at=created
             )
-            db.add(driver)
-            drivers.append(driver)
+            db.add(d)
+            drivers_data.append({
+                "model": d,
+                "category": lic_cat,
+                "last_active_time": created
+            })
 
         db.commit()
-        for d in drivers:
-            db.refresh(d)
+        for item in drivers_data:
+            db.refresh(item["model"])
 
-        # ── 500 Trips (over 90 days of history) ─────────────────────
-        print("Seeding 500 Trips...")
-        trips = []
-        used_codes = set()
+        # Helper: check compatibility
+        def is_compatible(driver_cat, vehicle_type):
+            if vehicle_type in ("Van", "Mini"):
+                return True # Any driver can drive light vehicles
+            else:
+                return driver_cat in ("HMV", "HGMV", "HTV")
 
-        for i in range(500):
-            # Generate unique trip code
-            while True:
-                code = f"TO-{random.randint(10000, 99999)}"
-                if code not in used_codes:
-                    used_codes.add(code)
-                    break
+        # ── Chronological Trips Simulation (500 Trips) ────────────────
+        print("Simulating 500 Trips Chronologically...")
+        
+        # We will stagger trips over the past 90 days
+        # 420 Completed, 15 Dispatched, 45 Draft, 20 Cancelled
+        trip_statuses = (
+            [TripStatus.COMPLETED] * 420 +
+            [TripStatus.DISPATCHED] * 15 +
+            [TripStatus.DRAFT] * 45 +
+            [TripStatus.CANCELLED] * 20
+        )
+        random.shuffle(trip_statuses)
 
+        # Generate timestamps for all trips over 90 days, then sort them
+        start_time_base = now - timedelta(days=90)
+        trip_events = []
+        for idx, status in enumerate(trip_statuses):
+            offset_seconds = random.randint(0, 90 * 24 * 3600)
+            t_time = start_time_base + timedelta(seconds=offset_seconds)
+            trip_events.append((t_time, status, idx))
+        
+        trip_events.sort(key=lambda x: x[0])  # Process chronologically
+
+        # Track active usage during simulation to avoid double allocation
+        busy_vehicles = set()  # set of vehicle IDs currently on trip
+        busy_drivers = set()   # set of driver IDs currently on trip
+
+        trips_created = []
+
+        for trip_time, status, orig_idx in trip_events:
+            # 1. Select vehicle and driver
+            # Find a vehicle not currently busy
+            available_v_items = [v for v in vehicles_data if v["model"].id not in busy_vehicles]
+            if not available_v_items:
+                available_v_items = vehicles_data
+            vehicle_item = random.choice(available_v_items)
+            vehicle = vehicle_item["model"]
+
+            # Find a compatible driver who is not busy and whose license is valid at trip_time
+            available_d_items = [
+                d for d in drivers_data 
+                if d["model"].id not in busy_drivers 
+                and is_compatible(d["category"], vehicle_item["type"])
+                and d["model"].license_expiry >= trip_time.date()
+            ]
+            if not available_d_items:
+                # fallback: any driver not busy
+                available_d_items = [d for d in drivers_data if d["model"].id not in busy_drivers]
+                if not available_d_items:
+                    available_d_items = drivers_data
+            
+            driver_item = random.choice(available_d_items)
+            driver = driver_item["model"]
+
+            # Trip route details
             route = random.choice(ROUTES)
             source, destination, base_dist = route
             planned_dist = round(base_dist * random.uniform(0.95, 1.05), 1)
-
-            vehicle = random.choice(vehicles)
-            driver = random.choice(drivers)
             cargo = round(random.uniform(200, vehicle.capacity_kg * 0.95), 1)
-            revenue = round(planned_dist * random.uniform(18, 55), 0)
+            revenue = round(planned_dist * random.uniform(25, 60), 0)
+            trip_code = f"TO-{orig_idx + 10000}"
 
-            # Status distribution over history
-            status_roll = random.random()
-            if status_roll < 0.55:
-                t_status = TripStatus.COMPLETED
-            elif status_roll < 0.70:
-                t_status = TripStatus.DISPATCHED
-            elif status_roll < 0.85:
-                t_status = TripStatus.DRAFT
-            else:
-                t_status = TripStatus.CANCELLED
+            # Calculate dispatch & completion datetimes
+            dispatch = trip_time
+            duration_hours = planned_dist / random.uniform(40, 60)
+            completion = dispatch + timedelta(hours=duration_hours)
 
-            # Spread created_at over ~90 days
-            days_ago = random.randint(0, 90)
-            hours_ago = random.randint(0, 23)
-            created = now - timedelta(days=days_ago, hours=hours_ago,
-                                       minutes=random.randint(0, 59))
+            start_odo = vehicle_item["current_odo"]
 
-            trip_kwargs = dict(
-                trip_code=code,
-                vehicle_id=vehicle.id,
-                driver_id=driver.id,
-                source=source,
-                destination=destination,
-                cargo_weight=cargo,
-                planned_distance=planned_dist,
-                revenue=revenue,
-                status=t_status,
-                created_at=created,
-                updated_at=created,
-            )
+            trip_kwargs = {
+                "trip_code": trip_code,
+                "vehicle_id": vehicle.id,
+                "driver_id": driver.id,
+                "source": source,
+                "destination": destination,
+                "cargo_weight": cargo,
+                "planned_distance": planned_dist,
+                "revenue": revenue,
+                "status": status,
+                "created_at": dispatch,
+                "updated_at": dispatch
+            }
 
-            if t_status in (TripStatus.DISPATCHED, TripStatus.COMPLETED):
-                dispatch = created + timedelta(hours=random.randint(1, 8))
+            if status in (TripStatus.COMPLETED, TripStatus.DISPATCHED):
                 trip_kwargs["dispatch_time"] = dispatch
-                trip_kwargs["start_odometer"] = round(random.uniform(10000, 200000), 1)
+                trip_kwargs["start_odometer"] = start_odo
 
-            if t_status == TripStatus.COMPLETED:
-                actual_dist = round(planned_dist * random.uniform(0.98, 1.08), 1)
-                completion = dispatch + timedelta(hours=int(planned_dist / random.uniform(35, 60)))
+            if status == TripStatus.COMPLETED:
+                actual_dist = round(planned_dist * random.uniform(0.98, 1.05), 1)
+                end_odo = round(start_odo + actual_dist, 1)
+                fuel = round(actual_dist / random.uniform(3.5, 6.0), 1)
+
                 trip_kwargs["actual_distance"] = actual_dist
                 trip_kwargs["completion_time"] = completion
-                trip_kwargs["end_odometer"] = trip_kwargs["start_odometer"] + actual_dist
-                trip_kwargs["fuel_used"] = round(actual_dist / random.uniform(3.0, 6.5), 1)
+                trip_kwargs["end_odometer"] = end_odo
+                trip_kwargs["fuel_used"] = fuel
                 trip_kwargs["updated_at"] = completion
 
-            trip = Trip(**trip_kwargs)
-            db.add(trip)
-            trips.append(trip)
+                # Update the simulated current state of the vehicle
+                vehicle_item["current_odo"] = end_odo
+                vehicle_item["last_active_time"] = completion
+                driver_item["last_active_time"] = completion
 
-        db.commit()
-        for t in trips:
-            db.refresh(t)
-
-        # ── Expenses for completed trips ────────────────────────────
-        print("Seeding Expenses for completed trips...")
-        completed_trips = [t for t in trips if t.status == TripStatus.COMPLETED]
-        for trip in completed_trips:
-            expense = Expense(
-                trip_id=trip.id,
-                vehicle_id=trip.vehicle_id,
-                toll=round(random.uniform(50, 800), 0),
-                other=round(random.uniform(0, 300), 0),
-            )
-            db.add(expense)
-        db.commit()
-
-        # ── Fuel Logs (3-8 per vehicle, historical) ─────────────────
-        print("Seeding Fuel Logs...")
-        for vehicle in vehicles:
-            num_logs = random.randint(3, 8)
-            for j in range(num_logs):
-                fuel_date = date.today() - timedelta(days=random.randint(1, 90))
-                liters = round(random.uniform(30, 250), 2)
-                cost_per_liter = random.uniform(88, 110)  # INR per liter
-                log = FuelLog(
+                # Historical logging of fuel and maintenance
+                # Fuel log for this completion
+                fuel_cost = round(fuel * random.uniform(90, 106), 2)
+                fl = FuelLog(
                     vehicle_id=vehicle.id,
-                    liters=liters,
-                    cost=round(liters * cost_per_liter, 2),
-                    date=fuel_date,
+                    liters=fuel,
+                    cost=fuel_cost,
+                    date=completion.date(),
+                    created_at=completion,
+                    updated_at=completion
                 )
-                db.add(log)
+                db.add(fl)
+
+                # Occasional expense record
+                exp = Expense(
+                    trip_id=orig_idx + 1,  # Temporary reference, mapped in next step
+                    vehicle_id=vehicle.id,
+                    toll=round(random.uniform(100, 1200), 0),
+                    other=round(random.uniform(0, 400), 0)
+                )
+                db.add(exp)
+
+            elif status == TripStatus.DISPATCHED:
+                # Currently running active trip
+                # These vehicle/driver are now locked as busy at the end of simulation
+                busy_vehicles.add(vehicle.id)
+                busy_driver_id = driver.id
+                busy_drivers.add(busy_driver_id)
+                vehicle_item["last_active_time"] = dispatch
+                driver_item["last_active_time"] = dispatch
+
+            elif status == TripStatus.CANCELLED:
+                # Cancelled doesn't progress odometer or lock anything
+                pass
+
+            trip_model = Trip(**trip_kwargs)
+            db.add(trip_model)
+            trips_created.append((trip_model, status, orig_idx))
+
         db.commit()
 
-        # ── Maintenance Logs (1-4 per vehicle) ──────────────────────
+        # Fix up Expense foreign keys to actual generated Trip IDs
+        print("Mapping expenses to correct trips...")
+        all_trips = db.query(Trip).all()
+        # Sort trips to map them back to their original event index
+        # Let's map by trip_code
+        trip_code_to_id = {t.trip_code: t.id for t in all_trips}
+        all_expenses = db.query(Expense).all()
+        for idx, exp in enumerate(all_expenses):
+            # map to the matching trip code
+            matched_code = f"TO-{exp.trip_id - 1 + 10000}"
+            exp.trip_id = trip_code_to_id[matched_code]
+        db.commit()
+
+        # ── Historical Maintenance Logs ──────────────────────────────
         print("Seeding Maintenance Logs...")
-        for vehicle in vehicles:
-            num_logs = random.randint(1, 4)
+        for item in vehicles_data:
+            vehicle = item["model"]
+            final_odo = item["current_odo"]
+            # Generate 1-3 completed maintenance logs at previous odometer stages
+            num_logs = random.randint(1, 3)
             for j in range(num_logs):
-                svc_date = date.today() - timedelta(days=random.randint(1, 180))
-                m_status = (MaintenanceStatus.COMPLETED
-                           if random.random() < 0.75
-                           else MaintenanceStatus.ACTIVE)
+                # Service happened at some point in the past
+                svc_days_ago = random.randint(10, 120)
+                svc_date = date.today() - timedelta(days=svc_days_ago)
                 log = MaintenanceLog(
                     vehicle_id=vehicle.id,
                     service_type=random.choice(SERVICE_TYPES),
-                    cost=round(random.uniform(500, 25000), 0),
+                    cost=round(random.uniform(800, 20000), 0),
                     service_date=svc_date,
-                    status=m_status,
+                    status=MaintenanceStatus.COMPLETED,
+                    created_at=datetime.combine(svc_date, datetime.min.time()),
+                    updated_at=datetime.combine(svc_date, datetime.min.time())
                 )
                 db.add(log)
         db.commit()
 
-        # ── Summary ─────────────────────────────────────────────────
+        # ── Synchronizing Final States ───────────────────────────────
+        print("Synchronizing Final Database Statuses...")
+        
+        # 1. Update Vehicle current odometers and statuses
+        for item in vehicles_data:
+            v = item["model"]
+            v.odometer = item["current_odo"]
+            
+            if v.id in busy_vehicles:
+                v.status = VehicleStatus.ON_TRIP
+            else:
+                # If not busy on a trip, it might be in maintenance (In Shop) or Retired
+                rand_val = random.random()
+                if rand_val < 0.08:
+                    v.status = VehicleStatus.IN_SHOP
+                    # Add an active maintenance log
+                    active_ml = MaintenanceLog(
+                        vehicle_id=v.id,
+                        service_type=random.choice(SERVICE_TYPES),
+                        cost=0.0,
+                        service_date=date.today(),
+                        status=MaintenanceStatus.ACTIVE,
+                        created_at=now,
+                        updated_at=now
+                    )
+                    db.add(active_ml)
+                elif rand_val < 0.10:
+                    v.status = VehicleStatus.RETIRED
+                else:
+                    v.status = VehicleStatus.AVAILABLE
+            db.add(v)
+
+        # 2. Update Driver statuses
+        for item in drivers_data:
+            d = item["model"]
+            
+            if d.id in busy_drivers:
+                d.status = DriverStatus.ON_TRIP
+            else:
+                # If not busy on a trip, check safety score / license expiry
+                if d.license_expiry < date.today() or d.safety_score < 70:
+                    d.status = DriverStatus.SUSPENDED
+                else:
+                    rand_val = random.random()
+                    if rand_val < 0.15:
+                        d.status = DriverStatus.OFF_DUTY
+                    else:
+                        d.status = DriverStatus.AVAILABLE
+            db.add(d)
+
+        db.commit()
+
+        # ── Output Summary ───────────────────────────────────────────
         v_count = db.query(Vehicle).count()
         d_count = db.query(Driver).count()
         t_count = db.query(Trip).count()
@@ -447,16 +551,20 @@ def seed_database():
         m_count = db.query(MaintenanceLog).count()
         e_count = db.query(Expense).count()
 
-        print(f"\n{'='*50}")
-        print(f"  DATABASE SEEDED SUCCESSFULLY")
-        print(f"{'='*50}")
-        print(f"  Vehicles:         {v_count}")
-        print(f"  Drivers:          {d_count}")
+        print(f"\n{'='*55}")
+        print(f"  REAL-WORLD SIMULATED DATABASE SEEDED SUCCESSFULLY")
+        print(f"{'='*55}")
+        print(f"  Vehicles:         {v_count} (On Trip: {len(busy_vehicles)})")
+        print(f"  Drivers:          {d_count} (On Trip: {len(busy_drivers)})")
         print(f"  Trips:            {t_count}")
+        print(f"    - Completed:  {db.query(Trip).filter(Trip.status == TripStatus.COMPLETED).count()}")
+        print(f"    - Dispatched: {db.query(Trip).filter(Trip.status == TripStatus.DISPATCHED).count()}")
+        print(f"    - Draft:      {db.query(Trip).filter(Trip.status == TripStatus.DRAFT).count()}")
+        print(f"    - Cancelled:  {db.query(Trip).filter(Trip.status == TripStatus.CANCELLED).count()}")
         print(f"  Fuel Logs:        {f_count}")
         print(f"  Maintenance Logs: {m_count}")
         print(f"  Expenses:         {e_count}")
-        print(f"{'='*50}\n")
+        print(f"{'='*55}\n")
 
     except Exception as e:
         print(f"Error seeding database: {e}")

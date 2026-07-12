@@ -1,0 +1,37 @@
+# -----------------------
+# Python
+# -----------------------
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual Environment
+.venv/
+venv/
+
+# Environment Variables
+.env
+
+# SQLite
+*.db
+*.sqlite3
+
+# Alembic cache
+alembic/versions/__pycache__/
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node (when frontend is added)
+node_modules/
+dist/

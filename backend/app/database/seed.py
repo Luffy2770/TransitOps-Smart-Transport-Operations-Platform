@@ -1,12 +1,23 @@
+"""
+TransitOps – Realistic Seed Data Generator
+============================================
+Generates a production-grade dataset for demo / hackathon evaluation:
+  • 100 vehicles   (Trucks, Vans, Minis, Tankers, Trailers)
+  • 200 drivers    (realistic Indian names, license data)
+  • 500 trips      (real Indian city-pair routes, 90-day history)
+  • Fuel logs, Maintenance logs, Expenses auto-generated
+"""
+
 from datetime import date, datetime, timedelta
 import random
 
 from app.database.base import Base
 from app.database.database import engine, SessionLocal
 from app.core.security import hash_password
-from app.core.enums import RoleType, VehicleStatus, DriverStatus, TripStatus, MaintenanceStatus
+from app.core.enums import (
+    RoleType, VehicleStatus, DriverStatus, TripStatus, MaintenanceStatus,
+)
 
-# Import all models to ensure they are registered on Base
 from app.models.role import Role
 from app.models.user import User
 from app.models.vehicle import Vehicle
@@ -16,8 +27,138 @@ from app.models.maintenance import MaintenanceLog
 from app.models.fuel_log import FuelLog
 from app.models.expense import Expense
 
+# ──────────────────────────────────────────────────────────────────────
+# Reference Data
+# ──────────────────────────────────────────────────────────────────────
+
+INDIAN_FIRST_NAMES = [
+    "Aarav", "Aditi", "Amit", "Ananya", "Arjun", "Bhavya", "Chetan", "Deepa",
+    "Dhruv", "Divya", "Eshan", "Fatima", "Gaurav", "Geeta", "Harish", "Isha",
+    "Jayesh", "Kavita", "Kiran", "Lakshmi", "Manish", "Meera", "Nikhil", "Nisha",
+    "Omkar", "Pooja", "Pranav", "Priya", "Rahul", "Rashmi", "Ravi", "Rekha",
+    "Rohit", "Sakshi", "Sanjay", "Sarita", "Sunil", "Tanvi", "Uday", "Vandana",
+    "Vijay", "Yamini", "Yash", "Zara", "Abhishek", "Ankita", "Ashwin", "Bharti",
+    "Chirag", "Disha", "Ganesh", "Hema", "Ishaan", "Jyoti", "Kartik", "Lata",
+    "Mohan", "Neha", "Pankaj", "Rajesh", "Sameer", "Shreya", "Tushar", "Uma",
+    "Varun", "Swati", "Anil", "Bindu", "Chandra", "Devika", "Girish", "Heena",
+    "Irfan", "Janaki", "Kamal", "Leela", "Mukesh", "Nandini", "Prasad", "Radha",
+    "Satish", "Tara", "Umesh", "Vinod", "Waseem", "Yogesh", "Zubin", "Akash",
+    "Bala", "Chitra", "Dinesh", "Ekta", "Farhan", "Gita", "Hari", "Indu",
+    "Jagdish", "Komal", "Lalit", "Mala",
+]
+
+INDIAN_LAST_NAMES = [
+    "Sharma", "Verma", "Patel", "Gupta", "Singh", "Kumar", "Reddy", "Nair",
+    "Iyer", "Das", "Joshi", "Mehta", "Shah", "Choudhury", "Rao", "Pillai",
+    "Mishra", "Agarwal", "Bose", "Chatterjee", "Desai", "Fernandes",
+    "Ghosh", "Hegde", "Jain", "Kaur", "Kulkarni", "Malhotra", "Mukherjee",
+    "Naidu", "Pandey", "Qureshi", "Rajan", "Saxena", "Thakur", "Upadhyay",
+    "Varma", "Yadav", "Banerjee", "Chopra", "Dutta", "Menon", "Shetty",
+    "Tiwari", "Ahuja", "Bhatt", "Chauhan", "Dubey", "Goel", "Kapoor",
+]
+
+VEHICLE_TYPES = ["Truck", "Van", "Mini", "Tanker", "Trailer"]
+
+VEHICLE_NAMES = {
+    "Truck": [
+        "Tata Prima 4928.S", "Ashok Leyland 4825", "BharatBenz 3528C",
+        "Eicher Pro 6049", "Volvo FMX 460", "Mahindra Blazo X 46",
+        "Tata Signa 4825.TK", "Ashok Leyland Captain 4019",
+        "BharatBenz 2828C", "ISUZU FVZ 34T",
+    ],
+    "Van": [
+        "Tata Ace Gold", "Mahindra Supro Van", "Maruti Eeco Cargo",
+        "Ashok Leyland Dost+", "Tata Intra V30", "Mahindra Bolero Maxitruck",
+        "Force Traveller 26", "Piaggio Ape Xtra DLX",
+    ],
+    "Mini": [
+        "Tata Ace Mini", "Mahindra Jeeto", "Piaggio Ape City",
+        "Bajaj Maxima Z", "Tata Magic Express", "Ashok Leyland Bada Dost",
+    ],
+    "Tanker": [
+        "Tata Signa 4923.S Tanker", "Ashok Leyland 4923 Tanker",
+        "BharatBenz 4928 Tanker", "Volvo FH16 Tanker",
+    ],
+    "Trailer": [
+        "Tata Prima 4028.S Trailer", "Ashok Leyland 4923 Trailer",
+        "Scania P410 Trailer", "MAN CLA 40.280 Trailer",
+    ],
+}
+
+CAPACITY_RANGE = {
+    "Truck":   (12000, 28000),
+    "Van":     (800, 3500),
+    "Mini":    (500, 1500),
+    "Tanker":  (15000, 30000),
+    "Trailer": (20000, 40000),
+}
+
+COST_RANGE = {
+    "Truck":   (1800000, 4500000),
+    "Van":     (400000, 900000),
+    "Mini":    (250000, 550000),
+    "Tanker":  (3000000, 6000000),
+    "Trailer": (2500000, 5500000),
+}
+
+RTO_CODES = [
+    "MH-01", "MH-02", "MH-04", "MH-12", "MH-14", "MH-43",
+    "DL-01", "DL-02", "DL-08",
+    "KA-01", "KA-02", "KA-05", "KA-09",
+    "TN-01", "TN-07", "TN-09",
+    "GJ-01", "GJ-06", "GJ-15",
+    "RJ-14", "RJ-19", "RJ-27",
+    "UP-14", "UP-32", "UP-80",
+    "WB-01", "WB-06",
+    "AP-09", "TS-07", "TS-08",
+    "KL-01", "KL-07",
+    "MP-04", "MP-09",
+    "HR-01", "HR-26",
+    "PB-02", "PB-10",
+]
+
+# Real Indian city-pair routes with approximate distances (km)
+ROUTES = [
+    ("Mumbai", "Pune", 150), ("Mumbai", "Nashik", 170), ("Mumbai", "Surat", 290),
+    ("Mumbai", "Ahmedabad", 530), ("Mumbai", "Goa", 590), ("Mumbai", "Nagpur", 820),
+    ("Delhi", "Jaipur", 280), ("Delhi", "Agra", 210), ("Delhi", "Chandigarh", 250),
+    ("Delhi", "Lucknow", 555), ("Delhi", "Dehradun", 250), ("Delhi", "Amritsar", 450),
+    ("Bangalore", "Chennai", 350), ("Bangalore", "Mysore", 150), ("Bangalore", "Hyderabad", 570),
+    ("Bangalore", "Kochi", 560), ("Bangalore", "Mangalore", 350), ("Bangalore", "Hubli", 400),
+    ("Kolkata", "Patna", 590), ("Kolkata", "Bhubaneswar", 440), ("Kolkata", "Guwahati", 590),
+    ("Kolkata", "Ranchi", 410), ("Kolkata", "Siliguri", 560),
+    ("Chennai", "Coimbatore", 510), ("Chennai", "Madurai", 460), ("Chennai", "Pondicherry", 150),
+    ("Chennai", "Tiruchirappalli", 330), ("Chennai", "Visakhapatnam", 780),
+    ("Hyderabad", "Vijayawada", 270), ("Hyderabad", "Warangal", 150), ("Hyderabad", "Nagpur", 500),
+    ("Hyderabad", "Tirupati", 560),
+    ("Ahmedabad", "Rajkot", 220), ("Ahmedabad", "Vadodara", 110), ("Ahmedabad", "Bhuj", 340),
+    ("Pune", "Kolhapur", 230), ("Pune", "Aurangabad", 240), ("Pune", "Solapur", 250),
+    ("Jaipur", "Jodhpur", 340), ("Jaipur", "Udaipur", 390), ("Jaipur", "Kota", 250),
+    ("Lucknow", "Varanasi", 320), ("Lucknow", "Kanpur", 90), ("Lucknow", "Allahabad", 200),
+    ("Indore", "Bhopal", 195), ("Indore", "Ujjain", 55), ("Indore", "Nagpur", 560),
+    ("Chandigarh", "Shimla", 115), ("Chandigarh", "Ludhiana", 100),
+    ("Kochi", "Trivandrum", 200), ("Kochi", "Kozhikode", 200),
+]
+
+SERVICE_TYPES = [
+    "Engine Oil Change", "Brake Pad Replacement", "Tyre Rotation",
+    "Air Filter Replacement", "Transmission Fluid Change", "Battery Replacement",
+    "Coolant Flush", "Spark Plug Replacement", "Suspension Check & Repair",
+    "Wheel Alignment", "AC Service", "Full Body Inspection",
+    "Clutch Plate Replacement", "Radiator Repair", "Exhaust System Repair",
+    "Fuel Injector Cleaning", "Power Steering Fluid Change", "Differential Oil Change",
+    "Headlight Restoration", "Windshield Wiper Replacement",
+]
+
+LICENSE_CATEGORIES = ["LMV", "HMV", "HGMV", "HTV"]
+
+# ──────────────────────────────────────────────────────────────────────
+# Generator
+# ──────────────────────────────────────────────────────────────────────
 
 def seed_database():
+    random.seed(42)  # Reproducible data
+
     print("Dropping existing tables...")
     Base.metadata.drop_all(bind=engine)
 
@@ -26,6 +167,7 @@ def seed_database():
 
     db = SessionLocal()
     try:
+        # ── Roles ────────────────────────────────────────────────────
         print("Seeding Roles...")
         roles = {}
         for role_name in RoleType:
@@ -33,213 +175,288 @@ def seed_database():
             db.add(role)
             roles[role_name.value] = role
         db.commit()
-
-        # Refresh roles to get IDs
         for name in roles:
             db.refresh(roles[name])
 
+        # ── Users (4 staff accounts) ────────────────────────────────
         print("Seeding Users...")
-        admin_user = User(
-            name="System Administrator",
-            email="admin@transitops.com",
-            password_hash=hash_password("admin123"),
-            role_id=roles[RoleType.FLEET_MANAGER.value].id,
-        )
-        dispatcher_user = User(
-            name="Jane Dispatcher",
-            email="dispatcher@transitops.com",
-            password_hash=hash_password("dispatcher123"),
-            role_id=roles[RoleType.DISPATCHER.value].id,
-        )
-        safety_user = User(
-            name="Sam Safety",
-            email="safety@transitops.com",
-            password_hash=hash_password("safety123"),
-            role_id=roles[RoleType.SAFETY_OFFICER.value].id,
-        )
-        financial_user = User(
-            name="Fiona Finance",
-            email="finance@transitops.com",
-            password_hash=hash_password("finance123"),
-            role_id=roles[RoleType.FINANCIAL_ANALYST.value].id,
-        )
-        db.add_all([admin_user, dispatcher_user, safety_user, financial_user])
+        users = [
+            User(name="System Administrator", email="admin@transitops.com",
+                 password_hash=hash_password("admin123"),
+                 role_id=roles[RoleType.FLEET_MANAGER.value].id),
+            User(name="Jane Dispatcher", email="dispatcher@transitops.com",
+                 password_hash=hash_password("dispatcher123"),
+                 role_id=roles[RoleType.DISPATCHER.value].id),
+            User(name="Sam Safety", email="safety@transitops.com",
+                 password_hash=hash_password("safety123"),
+                 role_id=roles[RoleType.SAFETY_OFFICER.value].id),
+            User(name="Fiona Finance", email="finance@transitops.com",
+                 password_hash=hash_password("finance123"),
+                 role_id=roles[RoleType.FINANCIAL_ANALYST.value].id),
+        ]
+        db.add_all(users)
         db.commit()
 
-        print("Seeding Vehicles...")
-        vehicles_data = [
-            ("V-101", "Van-01", "Van", 8000.0, VehicleStatus.AVAILABLE, 45000.0, 15200.0),
-            ("V-102", "Truck-02", "Truck", 12000.0, VehicleStatus.ON_TRIP, 60000.0, 24800.0),
-            ("V-103", "Mini-03", "Mini", 5000.0, VehicleStatus.AVAILABLE, 32000.0, 8900.0),
-            ("V-104", "Truck-04", "Truck", 15000.0, VehicleStatus.IN_SHOP, 75000.0, 42100.0),
-            ("V-105", "Van-05", "Van", 10000.0, VehicleStatus.AVAILABLE, 55000.0, 18500.0),
-        ]
+        # ── 100 Vehicles ────────────────────────────────────────────
+        print("Seeding 100 Vehicles...")
         vehicles = []
-        for reg, name, v_type, cap, status, cost, odo in vehicles_data:
+        used_reg = set()
+        now = datetime.utcnow()
+
+        for i in range(100):
+            v_type = random.choice(VEHICLE_TYPES)
+            rto = random.choice(RTO_CODES)
+            # Generate unique registration number
+            while True:
+                suffix = f"{random.randint(1000, 9999)}"
+                letter = random.choice("ABCDEFGHJKLMNPRSTUVWXYZ")
+                reg = f"{rto}-{letter}{letter}-{suffix}"
+                if reg not in used_reg:
+                    used_reg.add(reg)
+                    break
+
+            cap_lo, cap_hi = CAPACITY_RANGE[v_type]
+            cost_lo, cost_hi = COST_RANGE[v_type]
+
+            # Determine status: most Available, some On Trip, few In Shop/Retired
+            status_roll = random.random()
+            if status_roll < 0.55:
+                v_status = VehicleStatus.AVAILABLE
+            elif status_roll < 0.80:
+                v_status = VehicleStatus.ON_TRIP
+            elif status_roll < 0.93:
+                v_status = VehicleStatus.IN_SHOP
+            else:
+                v_status = VehicleStatus.RETIRED
+
+            # Stagger created_at over the past 2 years
+            days_ago = random.randint(30, 730)
+            created = now - timedelta(days=days_ago, hours=random.randint(0, 23),
+                                       minutes=random.randint(0, 59))
+
             vehicle = Vehicle(
                 registration_number=reg,
-                name=name,
+                name=random.choice(VEHICLE_NAMES[v_type]),
                 type=v_type,
-                capacity_kg=cap,
-                status=status,
-                acquisition_cost=cost,
-                odometer=odo,
+                capacity_kg=round(random.uniform(cap_lo, cap_hi), 0),
+                status=v_status,
+                acquisition_cost=round(random.uniform(cost_lo, cost_hi), 0),
+                odometer=round(random.uniform(5000, 250000), 1),
+                created_at=created,
+                updated_at=created + timedelta(days=random.randint(0, 30)),
             )
             db.add(vehicle)
             vehicles.append(vehicle)
-        db.commit()
 
-        # Refresh vehicles to get IDs
+        db.commit()
         for v in vehicles:
             db.refresh(v)
 
-        print("Seeding Drivers...")
-        drivers_data = [
-            ("Michael Schumacher", "LIC-MS987", "HMV", "+919876543210", date.today() + timedelta(days=365), 98.5, DriverStatus.AVAILABLE),
-            ("Lewis Hamilton", "LIC-LH441", "HMV", "+919876543211", date.today() + timedelta(days=200), 96.0, DriverStatus.ON_TRIP),
-            ("Max Verstappen", "LIC-MV033", "LMV", "+919876543212", date.today() + timedelta(days=500), 94.2, DriverStatus.AVAILABLE),
-            ("Sebastian Vettel", "LIC-SV005", "HMV", "+919876543213", date.today() - timedelta(days=10), 85.0, DriverStatus.SUSPENDED),
-            ("Fernando Alonso", "LIC-FA014", "LMV", "+919876543214", date.today() + timedelta(days=400), 97.8, DriverStatus.OFF_DUTY),
-        ]
+        # ── 200 Drivers ─────────────────────────────────────────────
+        print("Seeding 200 Drivers...")
         drivers = []
-        for name, lic_no, cat, contact, expiry, safety, status in drivers_data:
+        used_names = set()
+        used_lic = set()
+
+        for i in range(200):
+            # Generate unique name
+            while True:
+                fname = random.choice(INDIAN_FIRST_NAMES)
+                lname = random.choice(INDIAN_LAST_NAMES)
+                full = f"{fname} {lname}"
+                if full not in used_names:
+                    used_names.add(full)
+                    break
+
+            # Generate unique license number
+            while True:
+                state_code = random.choice(["MH", "DL", "KA", "TN", "GJ", "RJ", "UP",
+                                             "WB", "AP", "TS", "KL", "MP", "HR", "PB"])
+                lic_num = f"{state_code}-{random.randint(10, 99)}-{random.randint(100000, 999999)}"
+                if lic_num not in used_lic:
+                    used_lic.add(lic_num)
+                    break
+
+            # Status distribution: ~55% Available, ~20% On Trip, ~15% Off Duty, ~10% Suspended
+            status_roll = random.random()
+            if status_roll < 0.55:
+                d_status = DriverStatus.AVAILABLE
+            elif status_roll < 0.75:
+                d_status = DriverStatus.ON_TRIP
+            elif status_roll < 0.90:
+                d_status = DriverStatus.OFF_DUTY
+            else:
+                d_status = DriverStatus.SUSPENDED
+
+            # License expiry: most valid, some expired
+            if random.random() < 0.10:
+                expiry = date.today() - timedelta(days=random.randint(5, 180))
+            else:
+                expiry = date.today() + timedelta(days=random.randint(60, 1200))
+
+            days_ago = random.randint(30, 700)
+            created = now - timedelta(days=days_ago, hours=random.randint(0, 23))
+
             driver = Driver(
-                name=name,
-                license_number=lic_no,
-                license_category=cat,
-                contact_number=contact,
+                name=full,
+                license_number=lic_num,
+                license_category=random.choice(LICENSE_CATEGORIES),
+                contact_number=f"+91{random.randint(7000000000, 9999999999)}",
                 license_expiry=expiry,
-                safety_score=safety,
-                status=status,
+                safety_score=round(random.uniform(60.0, 100.0), 1),
+                status=d_status,
+                created_at=created,
+                updated_at=created + timedelta(days=random.randint(0, 20)),
             )
             db.add(driver)
             drivers.append(driver)
-        db.commit()
 
-        # Refresh drivers
+        db.commit()
         for d in drivers:
             db.refresh(d)
 
+        # ── 500 Trips (over 90 days of history) ─────────────────────
+        print("Seeding 500 Trips...")
+        trips = []
+        used_codes = set()
+
+        for i in range(500):
+            # Generate unique trip code
+            while True:
+                code = f"TO-{random.randint(10000, 99999)}"
+                if code not in used_codes:
+                    used_codes.add(code)
+                    break
+
+            route = random.choice(ROUTES)
+            source, destination, base_dist = route
+            planned_dist = round(base_dist * random.uniform(0.95, 1.05), 1)
+
+            vehicle = random.choice(vehicles)
+            driver = random.choice(drivers)
+            cargo = round(random.uniform(200, vehicle.capacity_kg * 0.95), 1)
+            revenue = round(planned_dist * random.uniform(18, 55), 0)
+
+            # Status distribution over history
+            status_roll = random.random()
+            if status_roll < 0.55:
+                t_status = TripStatus.COMPLETED
+            elif status_roll < 0.70:
+                t_status = TripStatus.DISPATCHED
+            elif status_roll < 0.85:
+                t_status = TripStatus.DRAFT
+            else:
+                t_status = TripStatus.CANCELLED
+
+            # Spread created_at over ~90 days
+            days_ago = random.randint(0, 90)
+            hours_ago = random.randint(0, 23)
+            created = now - timedelta(days=days_ago, hours=hours_ago,
+                                       minutes=random.randint(0, 59))
+
+            trip_kwargs = dict(
+                trip_code=code,
+                vehicle_id=vehicle.id,
+                driver_id=driver.id,
+                source=source,
+                destination=destination,
+                cargo_weight=cargo,
+                planned_distance=planned_dist,
+                revenue=revenue,
+                status=t_status,
+                created_at=created,
+                updated_at=created,
+            )
+
+            if t_status in (TripStatus.DISPATCHED, TripStatus.COMPLETED):
+                dispatch = created + timedelta(hours=random.randint(1, 8))
+                trip_kwargs["dispatch_time"] = dispatch
+                trip_kwargs["start_odometer"] = round(random.uniform(10000, 200000), 1)
+
+            if t_status == TripStatus.COMPLETED:
+                actual_dist = round(planned_dist * random.uniform(0.98, 1.08), 1)
+                completion = dispatch + timedelta(hours=int(planned_dist / random.uniform(35, 60)))
+                trip_kwargs["actual_distance"] = actual_dist
+                trip_kwargs["completion_time"] = completion
+                trip_kwargs["end_odometer"] = trip_kwargs["start_odometer"] + actual_dist
+                trip_kwargs["fuel_used"] = round(actual_dist / random.uniform(3.0, 6.5), 1)
+                trip_kwargs["updated_at"] = completion
+
+            trip = Trip(**trip_kwargs)
+            db.add(trip)
+            trips.append(trip)
+
+        db.commit()
+        for t in trips:
+            db.refresh(t)
+
+        # ── Expenses for completed trips ────────────────────────────
+        print("Seeding Expenses for completed trips...")
+        completed_trips = [t for t in trips if t.status == TripStatus.COMPLETED]
+        for trip in completed_trips:
+            expense = Expense(
+                trip_id=trip.id,
+                vehicle_id=trip.vehicle_id,
+                toll=round(random.uniform(50, 800), 0),
+                other=round(random.uniform(0, 300), 0),
+            )
+            db.add(expense)
+        db.commit()
+
+        # ── Fuel Logs (3-8 per vehicle, historical) ─────────────────
         print("Seeding Fuel Logs...")
-        # Add some historical fuel logs for vehicles
-        fuel_logs = []
         for vehicle in vehicles:
-            # Generate 3 fuel logs for each vehicle
-            for i in range(3):
-                fuel_date = date.today() - timedelta(days=(i * 7) + 3)
-                liters = random.uniform(50.0, 150.0)
-                cost = liters * random.uniform(1.2, 1.5)
+            num_logs = random.randint(3, 8)
+            for j in range(num_logs):
+                fuel_date = date.today() - timedelta(days=random.randint(1, 90))
+                liters = round(random.uniform(30, 250), 2)
+                cost_per_liter = random.uniform(88, 110)  # INR per liter
                 log = FuelLog(
                     vehicle_id=vehicle.id,
-                    liters=round(liters, 2),
-                    cost=round(cost, 2),
+                    liters=liters,
+                    cost=round(liters * cost_per_liter, 2),
                     date=fuel_date,
                 )
                 db.add(log)
-                fuel_logs.append(log)
         db.commit()
 
+        # ── Maintenance Logs (1-4 per vehicle) ──────────────────────
         print("Seeding Maintenance Logs...")
-        # Add some maintenance logs
-        maintenance_logs = [
-            MaintenanceLog(
-                vehicle_id=vehicles[0].id,
-                service_type="Routine Oil Change",
-                cost=120.0,
-                service_date=date.today() - timedelta(days=30),
-                status=MaintenanceStatus.COMPLETED,
-            ),
-            MaintenanceLog(
-                vehicle_id=vehicles[3].id,
-                service_type="Transmission Repair",
-                cost=1500.0,
-                service_date=date.today() - timedelta(days=2),
-                status=MaintenanceStatus.ACTIVE,
-            ),
-            MaintenanceLog(
-                vehicle_id=vehicles[1].id,
-                service_type="Brake Pad Replacement",
-                cost=350.0,
-                service_date=date.today() - timedelta(days=15),
-                status=MaintenanceStatus.COMPLETED,
-            ),
-        ]
-        db.add_all(maintenance_logs)
+        for vehicle in vehicles:
+            num_logs = random.randint(1, 4)
+            for j in range(num_logs):
+                svc_date = date.today() - timedelta(days=random.randint(1, 180))
+                m_status = (MaintenanceStatus.COMPLETED
+                           if random.random() < 0.75
+                           else MaintenanceStatus.ACTIVE)
+                log = MaintenanceLog(
+                    vehicle_id=vehicle.id,
+                    service_type=random.choice(SERVICE_TYPES),
+                    cost=round(random.uniform(500, 25000), 0),
+                    service_date=svc_date,
+                    status=m_status,
+                )
+                db.add(log)
         db.commit()
 
-        print("Seeding Trips and Expenses...")
-        # Completed Trip
-        completed_trip = Trip(
-            trip_code="TRIP-001",
-            vehicle_id=vehicles[0].id,
-            driver_id=drivers[0].id,
-            source="Mumbai",
-            destination="Pune",
-            cargo_weight=5000.0,
-            planned_distance=150.0,
-            actual_distance=152.5,
-            dispatch_time=datetime.utcnow() - timedelta(days=5, hours=6),
-            completion_time=datetime.utcnow() - timedelta(days=5, hours=2),
-            start_odometer=15047.5,
-            end_odometer=15200.0,
-            fuel_used=25.0,
-            revenue=4500.0,
-            status=TripStatus.COMPLETED,
-        )
-        db.add(completed_trip)
-        db.commit()
-        db.refresh(completed_trip)
+        # ── Summary ─────────────────────────────────────────────────
+        v_count = db.query(Vehicle).count()
+        d_count = db.query(Driver).count()
+        t_count = db.query(Trip).count()
+        f_count = db.query(FuelLog).count()
+        m_count = db.query(MaintenanceLog).count()
+        e_count = db.query(Expense).count()
 
-        completed_expense = Expense(
-            trip_id=completed_trip.id,
-            vehicle_id=vehicles[0].id,
-            toll=240.0,
-            other=50.0,
-        )
-        db.add(completed_expense)
-
-        # On Trip
-        ongoing_trip = Trip(
-            trip_code="TRIP-002",
-            vehicle_id=vehicles[1].id,
-            driver_id=drivers[1].id,
-            source="Delhi",
-            destination="Jaipur",
-            cargo_weight=10000.0,
-            planned_distance=270.0,
-            dispatch_time=datetime.utcnow() - timedelta(hours=3),
-            start_odometer=24530.0,
-            revenue=8000.0,
-            status=TripStatus.DISPATCHED,
-        )
-        db.add(ongoing_trip)
-        db.commit()
-        db.refresh(ongoing_trip)
-
-        ongoing_expense = Expense(
-            trip_id=ongoing_trip.id,
-            vehicle_id=vehicles[1].id,
-            toll=400.0,
-            other=0.0,
-        )
-        db.add(ongoing_expense)
-
-        # Draft Trip
-        draft_trip = Trip(
-            trip_code="TRIP-003",
-            vehicle_id=vehicles[2].id,
-            driver_id=drivers[2].id,
-            source="Bangalore",
-            destination="Chennai",
-            cargo_weight=4000.0,
-            planned_distance=350.0,
-            revenue=9500.0,
-            status=TripStatus.DRAFT,
-        )
-        db.add(draft_trip)
-        db.commit()
-
-        print("Database seeded successfully!")
+        print(f"\n{'='*50}")
+        print(f"  DATABASE SEEDED SUCCESSFULLY")
+        print(f"{'='*50}")
+        print(f"  Vehicles:         {v_count}")
+        print(f"  Drivers:          {d_count}")
+        print(f"  Trips:            {t_count}")
+        print(f"  Fuel Logs:        {f_count}")
+        print(f"  Maintenance Logs: {m_count}")
+        print(f"  Expenses:         {e_count}")
+        print(f"{'='*50}\n")
 
     except Exception as e:
         print(f"Error seeding database: {e}")

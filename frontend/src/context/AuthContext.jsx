@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     // Backend contract (per plan): POST /login -> { access_token, role, email }
-    const res = await api.post('/login', { email, password })
+    const res = await api.post('/auth/login', { email, password })
     const { access_token, role, email: returnedEmail } = res.data
 
     const nextUser = { email: returnedEmail ?? email, role }

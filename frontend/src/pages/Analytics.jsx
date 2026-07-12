@@ -158,7 +158,7 @@ export default function Analytics() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={sortedRoiData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E0D6" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-paper-line)" />
                     <XAxis dataKey="registration_number" tick={{ fontSize: 11, fontFamily: 'monospace' }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip 
@@ -166,9 +166,9 @@ export default function Analytics() {
                       labelStyle={{ fontWeight: 'bold' }}
                     />
                     <Legend />
-                    <Bar dataKey="total_revenue" name="Total Revenue ($)" fill="#2F5C8A" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="total_maintenance_cost" name="Maintenance ($)" fill="#E8871E" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="total_fuel_cost" name="Fuel ($)" fill="#C4432B" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="total_revenue" name="Total Revenue ($)" fill="var(--color-transit-blue)" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="total_maintenance_cost" name="Maintenance ($)" fill="var(--color-signal-amber)" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="total_fuel_cost" name="Fuel ($)" fill="var(--color-alert-red)" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

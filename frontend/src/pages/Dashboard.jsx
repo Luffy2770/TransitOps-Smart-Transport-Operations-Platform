@@ -188,7 +188,7 @@ export default function Dashboard() {
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={roiData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E0D6" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-paper-line)" />
                       <XAxis dataKey="registration_number" tick={{ fontSize: 11, fontFamily: 'monospace' }} />
                       <YAxis tick={{ fontSize: 11 }} label={{ value: 'ROI %', angle: -90, position: 'insideLeft' }} />
                       <Tooltip 
@@ -197,7 +197,7 @@ export default function Dashboard() {
                       />
                       <Bar dataKey="roi_percentage" name="ROI %" radius={[2, 2, 0, 0]}>
                         {roiData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.roi_percentage >= 0 ? '#2F6B4F' : '#C4432B'} />
+                          <Cell key={`cell-${index}`} fill={entry.roi_percentage >= 0 ? 'var(--color-rail-green)' : 'var(--color-alert-red)'} />
                         ))}
                       </Bar>
                     </BarChart>

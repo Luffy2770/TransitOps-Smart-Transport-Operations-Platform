@@ -54,3 +54,31 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-ticker { animation: none; }
 }
+
+.dark {
+  /* canvas is dark */
+  --color-canvas: #090D1A; /* deep dark navy */
+  --color-canvas-raised: #0F172A; /* slate-900 */
+  --color-paper-line: #1E293B; /* slate-800 */
+  --color-slate-ink: #F8FAFC; /* slate-50 */
+
+  /* Semantic colors in dark mode */
+  --color-rail-green: #10B981; /* emerald-500 */
+  --color-rail-green-dim: rgba(16, 185, 129, 0.15);
+
+  --color-alert-red: #EF4444; /* red-500 */
+  --color-alert-red-dim: rgba(239, 68, 68, 0.15);
+
+  --color-transit-blue: #3B82F6; /* blue-500 */
+  --color-transit-blue-dim: rgba(59, 130, 246, 0.15);
+
+  --color-signal-amber: #F59E0B; /* amber-500 */
+  --color-signal-amber-dim: rgba(245, 158, 11, 0.15);
+
+  /* Adjust ink values for text contrast in dark mode */
+  --color-ink-950: #020617; /* slate-950 (sidebar dark background) */
+  --color-ink-900: #0B1120;
+  --color-ink-800: #1E293B;
+  --color-ink-700: #334155;
+  --color-ink-500: #94A3B8; /* slate-400 */
+}

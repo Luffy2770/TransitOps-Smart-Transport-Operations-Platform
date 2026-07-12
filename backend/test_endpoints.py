@@ -251,11 +251,11 @@ reg_dup_res = requests.post(f"{BASE_URL}/auth/register", json=register_payload)
 print(f"Duplicate Register status: {reg_dup_res.status_code}")
 assert reg_dup_res.status_code == 400
 
-# Try logging in with new user (Expect 200)
-login_new_payload = {"email": "testsignup@transitops.com", "password": "password123"}
+# Try logging in with new user using mixed case email (Expect 200)
+login_new_payload = {"email": "TestSignUp@transitops.com", "password": "password123"}
 login_new_res = requests.post(f"{BASE_URL}/auth/login", json=login_new_payload)
 assert login_new_res.status_code == 200
 assert login_new_res.json()["role"] == "Dispatcher"
-print("Registration and login verification success!")
+print("Registration and login verification success (Case Insensitive)!")
 
 print("\n--- ALL COMPREHENSIVE TESTS PASSED SUCCESSFULLY! ---")

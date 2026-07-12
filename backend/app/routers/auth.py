@@ -14,7 +14,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=Token)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == login_data.email).first()
+    email_clean = login_data.email.lower().strip()
+    user = db.query(User).filter(User.email == email_clean).first()
     if not user or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,8 +64,9 @@ def change_password(
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(data: UserRegister, db: Session = Depends(get_db)):
+    email_clean = data.email.lower().strip()
     # Check if user already exists
-    existing = db.query(User).filter(User.email == data.email).first()
+    existing = db.query(User).filter(User.email == email_clean).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -82,7 +84,7 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     # Create new user
     user = User(
         name=data.name,
-        email=data.email,
+        email=email_clean,
         password_hash=hash_password(data.password),
         role_id=role.id,
     )

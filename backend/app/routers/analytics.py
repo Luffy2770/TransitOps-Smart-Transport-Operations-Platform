@@ -30,19 +30,28 @@ def get_kpis(
     )
     total_distance = float(total_distance_res or 0)
 
-    # Total active vehicles (not retired)
-    total_active_vehicles = (
-        db.query(Vehicle)
-        .filter(Vehicle.status != VehicleStatus.RETIRED)
-        .count()
-    )
+    # Vehicles counts
+    active_vehicles = db.query(Vehicle).filter(Vehicle.status != VehicleStatus.RETIRED).count()
+    available_vehicles = db.query(Vehicle).filter(Vehicle.status == VehicleStatus.AVAILABLE).count()
+    vehicles_in_maintenance = db.query(Vehicle).filter(Vehicle.status == VehicleStatus.IN_SHOP).count()
+    vehicles_on_trip = db.query(Vehicle).filter(Vehicle.status == VehicleStatus.ON_TRIP).count()
 
-    # Total drivers on trip
-    drivers_on_trip = (
+    # Trips counts
+    active_trips = db.query(Trip).filter(Trip.status == TripStatus.DISPATCHED).count()
+    pending_trips = db.query(Trip).filter(Trip.status == TripStatus.DRAFT).count()
+
+    # Drivers counts
+    drivers_on_duty = (
         db.query(Driver)
-        .filter(Driver.status == DriverStatus.ON_TRIP)
+        .filter(Driver.status.in_([DriverStatus.AVAILABLE, DriverStatus.ON_TRIP]))
         .count()
     )
+    drivers_on_trip = db.query(Driver).filter(Driver.status == DriverStatus.ON_TRIP).count()
+
+    # Fleet Utilization (%) = (Vehicles On Trip / Active Vehicles) * 100
+    fleet_utilization = 0.0
+    if active_vehicles > 0:
+        fleet_utilization = (vehicles_on_trip / active_vehicles) * 100
 
     # Total revenue from completed trips
     total_revenue_res = (
@@ -71,11 +80,17 @@ def get_kpis(
 
     return {
         "total_distance": round(total_distance, 1),
-        "total_active_vehicles": total_active_vehicles,
-        "drivers_on_trip": drivers_on_trip,
         "total_revenue": round(total_revenue, 2),
         "total_costs": round(total_costs, 2),
         "avg_safety_score": round(avg_safety_score, 1),
+        "active_vehicles": active_vehicles,
+        "available_vehicles": available_vehicles,
+        "vehicles_in_maintenance": vehicles_in_maintenance,
+        "active_trips": active_trips,
+        "pending_trips": pending_trips,
+        "drivers_on_duty": drivers_on_duty,
+        "drivers_on_trip": drivers_on_trip,
+        "fleet_utilization": round(fleet_utilization, 1),
     }
 
 

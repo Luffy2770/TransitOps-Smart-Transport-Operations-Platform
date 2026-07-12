@@ -121,8 +121,22 @@ def update_trip(
     # If dispatching
     if new_status == TripStatus.DISPATCHED and old_status != TripStatus.DISPATCHED:
         # Check vehicle status
-        vehicle = db.query(Vehicle).filter(Vehicle.id == trip.vehicle_id).first()
-        driver = db.query(Driver).filter(Driver.id == trip.driver_id).first()
+        target_vehicle_id = update_data.get("vehicle_id") or trip.vehicle_id
+        target_driver_id = update_data.get("driver_id") or trip.driver_id
+        
+        vehicle = db.query(Vehicle).filter(Vehicle.id == target_vehicle_id).first()
+        driver = db.query(Driver).filter(Driver.id == target_driver_id).first()
+        
+        if vehicle and vehicle.status != VehicleStatus.AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Vehicle '{vehicle.registration_number}' is not available (Current Status: {vehicle.status.value})",
+            )
+        if driver and driver.status != DriverStatus.AVAILABLE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Driver '{driver.name}' is not available (Current Status: {driver.status.value})",
+            )
         
         if vehicle:
             vehicle.status = VehicleStatus.ON_TRIP

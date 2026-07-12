@@ -82,3 +82,20 @@ body {
   --color-ink-700: #334155;
   --color-ink-500: #94A3B8; /* slate-400 */
 }
+
+/* Force light text contrast for dark elements in dark mode */
+.dark .text-canvas {
+  color: #F7F5F0 !important;
+}
+
+/* Dynamic text coloring for dark mode */
+.dark .text-ink-950,
+.dark .text-ink-900,
+.dark .text-ink-800,
+.dark .text-ink-700 {
+  color: var(--color-slate-ink) !important;
+}
+
+.dark .text-ink-500 {
+  color: #94A3B8 !important; /* slate-400 for secondary details */
+}

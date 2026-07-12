@@ -26,3 +26,10 @@ class UserResponse(BaseModel):
 class ChangePassword(BaseModel):
     current_password: str
     new_password: str
+
+
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str

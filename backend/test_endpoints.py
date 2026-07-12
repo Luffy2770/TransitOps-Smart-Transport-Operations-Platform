@@ -197,6 +197,6 @@ trip3_dispatch_fail = requests.patch(
 )
 print(f"Busy dispatch status: {trip3_dispatch_fail.status_code}, detail: {trip3_dispatch_fail.json()}")
 assert trip3_dispatch_fail.status_code == 400
-assert "not available" in trip3_dispatch_fail.json()["detail"].lower()
+assert "cannot be dispatched" in trip3_dispatch_fail.json()["detail"].lower()
 
 print("\n--- ALL COMPREHENSIVE TESTS PASSED SUCCESSFULLY! ---")

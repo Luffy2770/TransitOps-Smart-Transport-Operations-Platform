@@ -58,17 +58,3 @@ def change_password(
     current_user.password_hash = hash_password(data.new_password)
     db.commit()
     return {"message": "Password updated successfully"}
-
-
-@router.post("/reset-db")
-def reset_db(
-    _current_user=Depends(RoleChecker(["Fleet Manager"])),
-):
-    try:
-        seed_database()
-        return {"message": "Database successfully reset and seeded!"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Reset failed: {str(e)}",
-        )

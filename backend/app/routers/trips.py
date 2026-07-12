@@ -60,6 +60,13 @@ def create_trip(
             detail=f"Vehicle with ID {trip_in.vehicle_id} not found",
         )
 
+    # Validate weight limit
+    if trip_in.cargo_weight > vehicle.capacity_kg:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cargo weight ({trip_in.cargo_weight} kg) exceeds vehicle carrying capacity ({vehicle.capacity_kg} kg)",
+        )
+
     # Verify driver exists and is Available
     driver = db.query(Driver).filter(Driver.id == trip_in.driver_id).first()
     if not driver:
@@ -96,6 +103,18 @@ def update_trip(
         )
 
     update_data = trip_in.model_dump(exclude_unset=True)
+
+    # Validate weight limit if cargo_weight or vehicle_id are modified
+    target_vehicle_id = update_data.get("vehicle_id") or trip.vehicle_id
+    target_cargo_weight = update_data.get("cargo_weight") or trip.cargo_weight
+    
+    vehicle = db.query(Vehicle).filter(Vehicle.id == target_vehicle_id).first()
+    if vehicle and target_cargo_weight > vehicle.capacity_kg:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cargo weight ({target_cargo_weight} kg) exceeds vehicle carrying capacity ({vehicle.capacity_kg} kg)",
+        )
+
     old_status = trip.status
     new_status = update_data.get("status")
 

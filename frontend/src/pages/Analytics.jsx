@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Topbar } from '@/components/Topbar'
-import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download } from 'lucide-react'
+import { AlertTriangle, TrendingUp, DollarSign, Calculator, ShieldCheck, Download, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { 
   BarChart, 
   Bar, 
@@ -17,6 +17,36 @@ export default function Analytics() {
   const [roiData, setRoiData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [sortBy, setSortBy] = useState('roi_percentage')
+  const [sortOrder, setSortOrder] = useState('desc')
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('desc')
+    }
+  }
+
+  function SortIcon({ field }) {
+    if (sortBy !== field) return <ArrowUpDown size={13} className="opacity-40" />
+    return sortOrder === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+  }
+
+  const sortedRoiData = [...roiData].sort((a, b) => {
+    if (!sortBy) return 0
+    let aVal = a[sortBy]
+    let bVal = b[sortBy]
+
+    if (typeof aVal === 'string') {
+      return sortOrder === 'asc' 
+        ? aVal.localeCompare(bVal) 
+        : bVal.localeCompare(aVal)
+    }
+
+    return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
+  })
 
   async function fetchAnalytics() {
     setLoading(true)
@@ -127,7 +157,7 @@ export default function Analytics() {
               <h4 className="font-display font-semibold text-slate-ink text-md mb-6">Financial Comparison per Vehicle</h4>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={roiData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
+                  <BarChart data={sortedRoiData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E4E0D6" />
                     <XAxis dataKey="registration_number" tick={{ fontSize: 11, fontFamily: 'monospace' }} />
                     <YAxis tick={{ fontSize: 11 }} />
@@ -150,16 +180,58 @@ export default function Analytics() {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider">
-                      <th className="px-6 py-4 font-semibold">Vehicle</th>
-                      <th className="px-6 py-4 font-semibold">Acquisition Cost</th>
-                      <th className="px-6 py-4 font-semibold">Revenue</th>
-                      <th className="px-6 py-4 font-semibold">Maintenance</th>
-                      <th className="px-6 py-4 font-semibold">Fuel Costs</th>
-                      <th className="px-6 py-4 font-semibold text-right">Calculated ROI</th>
+                      <th 
+                        className="px-6 py-4 font-semibold cursor-pointer select-none"
+                        onClick={() => handleSort('registration_number')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Vehicle <SortIcon field="registration_number" />
+                        </span>
+                      </th>
+                      <th 
+                        className="px-6 py-4 font-semibold cursor-pointer select-none"
+                        onClick={() => handleSort('acquisition_cost')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Acquisition Cost <SortIcon field="acquisition_cost" />
+                        </span>
+                      </th>
+                      <th 
+                        className="px-6 py-4 font-semibold cursor-pointer select-none"
+                        onClick={() => handleSort('total_revenue')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Revenue <SortIcon field="total_revenue" />
+                        </span>
+                      </th>
+                      <th 
+                        className="px-6 py-4 font-semibold cursor-pointer select-none"
+                        onClick={() => handleSort('total_maintenance_cost')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Maintenance <SortIcon field="total_maintenance_cost" />
+                        </span>
+                      </th>
+                      <th 
+                        className="px-6 py-4 font-semibold cursor-pointer select-none"
+                        onClick={() => handleSort('total_fuel_cost')}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          Fuel Costs <SortIcon field="total_fuel_cost" />
+                        </span>
+                      </th>
+                      <th 
+                        className="px-6 py-4 font-semibold cursor-pointer select-none text-right"
+                        onClick={() => handleSort('roi_percentage')}
+                      >
+                        <span className="inline-flex items-center gap-1 justify-end w-full">
+                          Calculated ROI <SortIcon field="roi_percentage" />
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-paper-line font-medium text-slate-ink">
-                    {roiData.map(item => (
+                    {sortedRoiData.map(item => (
                       <tr key={item.vehicle_id} className="hover:bg-canvas transition-colors">
                         <td className="px-6 py-4">
                           <p className="font-mono font-bold text-ink-900">{item.registration_number}</p>

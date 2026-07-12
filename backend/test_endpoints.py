@@ -93,11 +93,14 @@ assert v_update.json()["status"] == "In Shop"
 print("Success!")
 
 # 10. Update Vehicle (Duplicate registration_number -> Expect 400)
-# V-101 is seeded by seed.py
-print("\n[Test 10] Updating Vehicle to a registration number that already exists (V-101)...")
+# Fetch registration number of vehicle 1 to use as duplicate
+v1_res = requests.get(f"{BASE_URL}/vehicles/1", headers=fm_headers)
+assert v1_res.status_code == 200
+v1_reg = v1_res.json()["registration_number"]
+print(f"\n[Test 10] Updating Vehicle {v_id} to a registration number that already exists ({v1_reg})...")
 v_update_dup = requests.patch(
     f"{BASE_URL}/vehicles/{v_id}",
-    json={"registration_number": "V-101"},
+    json={"registration_number": v1_reg},
     headers=fm_headers,
 )
 print(f"Update Duplicate Status: {v_update_dup.status_code}")
@@ -169,14 +172,27 @@ assert d_del_get.status_code == 404
 
 # 17. Cargo weight limits check on trip creation (Expect 400)
 print("\n[Test 17] Attempting to create a Trip with excessive cargo weight...")
-# V-101 has capacity_kg = 8000.0, Driver 3 is Available
+# Find an available vehicle and driver dynamically
+vehicles_res = requests.get(f"{BASE_URL}/vehicles", headers=fm_headers)
+assert vehicles_res.status_code == 200
+available_vehicles = [v for v in vehicles_res.json() if v["status"] == "Available"]
+assert len(available_vehicles) > 0
+avail_vehicle_id = available_vehicles[0]["id"]
+avail_vehicle_cap = available_vehicles[0]["capacity_kg"]
+
+drivers_res = requests.get(f"{BASE_URL}/drivers", headers=fm_headers)
+assert drivers_res.status_code == 200
+available_drivers = [d for d in drivers_res.json() if d["status"] == "Available"]
+assert len(available_drivers) > 0
+avail_driver_id = available_drivers[0]["id"]
+
 trip_payload = {
     "trip_code": "TEST-TRIP-OVERWEIGHT",
-    "vehicle_id": 1, 
-    "driver_id": 3, 
+    "vehicle_id": avail_vehicle_id, 
+    "driver_id": avail_driver_id, 
     "source": "City A",
     "destination": "City B",
-    "cargo_weight": 50000000000.0, 
+    "cargo_weight": avail_vehicle_cap + 10000.0, 
     "planned_distance": 100.0,
     "revenue": 2000.0
 }
@@ -187,12 +203,19 @@ assert "exceeds" in trip_response.json()["detail"].lower()
 
 # 18. Dispatch vehicle/driver that is already busy (Expect 400)
 print("\n[Test 18] Attempting to dispatch a Trip with a busy Driver...")
-# Driver 2 (Lewis Hamilton) is ON_TRIP. Let's try to dispatch a trip that uses Driver 2.
-# Trip 3 (TRIP-003) is seeded as Draft, uses Driver 3 (Available).
-# Let's try to temporarily update Trip 3 to use Driver 2, and then dispatch it.
+busy_drivers = [d for d in drivers_res.json() if d["status"] == "On Trip"]
+assert len(busy_drivers) > 0
+busy_driver_id = busy_drivers[0]["id"]
+
+trips_res = requests.get(f"{BASE_URL}/trips", headers=fm_headers)
+assert trips_res.status_code == 200
+draft_trips = [t for t in trips_res.json() if t["status"] == "Draft"]
+assert len(draft_trips) > 0
+target_trip_id = draft_trips[0]["id"]
+
 trip3_dispatch_fail = requests.patch(
-    f"{BASE_URL}/trips/3", 
-    json={"driver_id": 2, "status": "Dispatched"}, 
+    f"{BASE_URL}/trips/{target_trip_id}", 
+    json={"driver_id": busy_driver_id, "status": "Dispatched"}, 
     headers=disp_headers
 )
 print(f"Busy dispatch status: {trip3_dispatch_fail.status_code}, detail: {trip3_dispatch_fail.json()}")
@@ -217,11 +240,11 @@ exp_driver_id = d_exp_create.json()["id"]
 # Try to create a trip using this expired driver (Expect 400)
 trip_exp_driver_payload = {
     "trip_code": "TEST-TRIP-EXPIRED",
-    "vehicle_id": 1,
+    "vehicle_id": avail_vehicle_id,
     "driver_id": exp_driver_id,
     "source": "City A",
     "destination": "City B",
-    "cargo_weight": 1000.0,
+    "cargo_weight": 10.0,
     "planned_distance": 100.0,
     "revenue": 2000.0
 }

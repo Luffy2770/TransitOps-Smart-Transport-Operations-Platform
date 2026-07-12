@@ -9,7 +9,10 @@ import {
   AlertTriangle, 
   CheckCircle,
   Wrench,
-  Check
+  Check,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 
 export default function Maintenance() {
@@ -21,6 +24,41 @@ export default function Maintenance() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [sortBy, setSortBy] = useState('status')
+  const [sortOrder, setSortOrder] = useState('asc')
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('asc')
+    }
+  }
+
+  function SortIcon({ field }) {
+    if (sortBy !== field) return <ArrowUpDown size={13} className="opacity-40" />
+    return sortOrder === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+  }
+
+  const sortedLogs = [...logs].sort((a, b) => {
+    if (!sortBy) return 0
+    let aVal = a[sortBy]
+    let bVal = b[sortBy]
+
+    if (sortBy === 'vehicle_id') {
+      aVal = getVehicleLabel(a.vehicle_id)
+      bVal = getVehicleLabel(b.vehicle_id)
+    }
+
+    if (typeof aVal === 'string') {
+      return sortOrder === 'asc' 
+        ? aVal.localeCompare(bVal) 
+        : bVal.localeCompare(aVal)
+    }
+
+    return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
+  })
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -165,17 +203,52 @@ export default function Maintenance() {
             ) : (
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider">
-                    <th className="px-6 py-4 font-semibold">Vehicle</th>
-                    <th className="px-6 py-4 font-semibold">Service Type</th>
-                    <th className="px-6 py-4 font-semibold">Service Date</th>
-                    <th className="px-6 py-4 font-semibold">Cost</th>
-                    <th className="px-6 py-4 font-semibold">Status</th>
+                  <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider font-semibold">
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('vehicle_id')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Vehicle <SortIcon field="vehicle_id" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('service_type')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Service Type <SortIcon field="service_type" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('service_date')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Service Date <SortIcon field="service_date" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('cost')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Cost <SortIcon field="cost" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('status')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Status <SortIcon field="status" />
+                      </span>
+                    </th>
                     {isManager && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-paper-line font-medium text-slate-ink">
-                  {logs.map(log => (
+                  {sortedLogs.map(log => (
                     <tr key={log.id} className="hover:bg-canvas transition-colors">
                       <td className="px-6 py-4 font-bold text-ink-900">{getVehicleLabel(log.vehicle_id)}</td>
                       <td className="px-6 py-4">{log.service_type}</td>

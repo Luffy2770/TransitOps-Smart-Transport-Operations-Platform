@@ -7,7 +7,10 @@ import {
   X, 
   AlertTriangle, 
   CheckCircle,
-  Flame
+  Flame,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react'
 
 export default function Fuel() {
@@ -19,6 +22,44 @@ export default function Fuel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [sortBy, setSortBy] = useState('date')
+  const [sortOrder, setSortOrder] = useState('desc')
+
+  function handleSort(field) {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder(field === 'date' || field === 'liters' || field === 'cost' || field === 'rate' ? 'desc' : 'asc')
+    }
+  }
+
+  function SortIcon({ field }) {
+    if (sortBy !== field) return <ArrowUpDown size={13} className="opacity-40" />
+    return sortOrder === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />
+  }
+
+  const sortedFuelLogs = [...fuelLogs].sort((a, b) => {
+    if (!sortBy) return 0
+    let aVal = a[sortBy]
+    let bVal = b[sortBy]
+
+    if (sortBy === 'vehicle_id') {
+      aVal = getVehicleLabel(a.vehicle_id)
+      bVal = getVehicleLabel(b.vehicle_id)
+    } else if (sortBy === 'rate') {
+      aVal = a.cost / (a.liters || 1)
+      bVal = b.cost / (b.liters || 1)
+    }
+
+    if (typeof aVal === 'string') {
+      return sortOrder === 'asc' 
+        ? aVal.localeCompare(bVal) 
+        : bVal.localeCompare(aVal)
+    }
+
+    return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
+  })
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -147,16 +188,51 @@ export default function Fuel() {
             ) : (
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider">
-                    <th className="px-6 py-4 font-semibold">Vehicle</th>
-                    <th className="px-6 py-4 font-semibold">Log Date</th>
-                    <th className="px-6 py-4 font-semibold">Liters (L)</th>
-                    <th className="px-6 py-4 font-semibold">Total Cost</th>
-                    <th className="px-6 py-4 font-semibold">Rate ($/L)</th>
+                  <tr className="bg-ink-950 text-canvas font-display border-b border-paper-line text-xs uppercase tracking-wider font-semibold">
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('vehicle_id')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Vehicle <SortIcon field="vehicle_id" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('date')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Log Date <SortIcon field="date" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('liters')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Liters (L) <SortIcon field="liters" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('cost')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Total Cost <SortIcon field="cost" />
+                      </span>
+                    </th>
+                    <th 
+                      className="px-6 py-4 font-semibold cursor-pointer select-none"
+                      onClick={() => handleSort('rate')}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        Rate ($/L) <SortIcon field="rate" />
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-paper-line font-medium text-slate-ink">
-                  {fuelLogs.map(log => (
+                  {sortedFuelLogs.map(log => (
                     <tr key={log.id} className="hover:bg-canvas transition-colors">
                       <td className="px-6 py-4 font-bold text-ink-900">{getVehicleLabel(log.vehicle_id)}</td>
                       <td className="px-6 py-4 font-mono text-xs text-ink-500">

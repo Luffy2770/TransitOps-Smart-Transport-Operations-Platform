@@ -199,4 +199,39 @@ print(f"Busy dispatch status: {trip3_dispatch_fail.status_code}, detail: {trip3_
 assert trip3_dispatch_fail.status_code == 400
 assert "cannot be dispatched" in trip3_dispatch_fail.json()["detail"].lower()
 
+# 19. Driver license expiry check (Expect 400)
+print("\n[Test 19] Testing Driver with expired license validation...")
+# Create a driver whose license is expired
+driver_expired_payload = {
+    "name": "Expired Driver",
+    "license_number": "LIC-EXP11",
+    "license_category": "LMV",
+    "contact_number": "+910000000000",
+    "license_expiry": "2025-01-01", 
+    "safety_score": 90.0,
+}
+d_exp_create = requests.post(f"{BASE_URL}/drivers", json=driver_expired_payload, headers=fm_headers)
+assert d_exp_create.status_code == 201
+exp_driver_id = d_exp_create.json()["id"]
+
+# Try to create a trip using this expired driver (Expect 400)
+trip_exp_driver_payload = {
+    "trip_code": "TEST-TRIP-EXPIRED",
+    "vehicle_id": 1,
+    "driver_id": exp_driver_id,
+    "source": "City A",
+    "destination": "City B",
+    "cargo_weight": 1000.0,
+    "planned_distance": 100.0,
+    "revenue": 2000.0
+}
+trip_exp_res = requests.post(f"{BASE_URL}/trips", json=trip_exp_driver_payload, headers=disp_headers)
+print(f"Expired driver trip status: {trip_exp_res.status_code}, detail: {trip_exp_res.json()}")
+assert trip_exp_res.status_code == 400
+assert "expired" in trip_exp_res.json()["detail"].lower()
+
+# Clean up expired driver
+del_exp_driver = requests.delete(f"{BASE_URL}/drivers/{exp_driver_id}", headers=fm_headers)
+assert del_exp_driver.status_code == 204
+
 print("\n--- ALL COMPREHENSIVE TESTS PASSED SUCCESSFULLY! ---")

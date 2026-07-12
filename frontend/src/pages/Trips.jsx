@@ -231,7 +231,10 @@ export default function Trips() {
 
   // Filter available drivers & vehicles for dropdowns
   const availableVehicles = vehicles.filter(v => v.status === 'Available')
-  const availableDrivers = drivers.filter(d => d.status === 'Available')
+  const availableDrivers = drivers.filter(d => 
+    d.status === 'Available' && 
+    new Date(d.license_expiry) >= new Date()
+  )
 
   return (
     <div className="min-h-full">

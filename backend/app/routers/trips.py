@@ -74,6 +74,18 @@ def create_trip(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Driver with ID {trip_in.driver_id} not found",
         )
+    
+    if driver.status == DriverStatus.SUSPENDED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Driver '{driver.name}' cannot be assigned because they are suspended.",
+        )
+        
+    if driver.license_expiry < datetime.utcnow().date():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Driver '{driver.name}' cannot be assigned because their driving license is expired.",
+        )
 
     trip = Trip(**trip_in.model_dump())
     db.add(trip)
@@ -146,6 +158,11 @@ def update_trip(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Driver '{driver.name}' cannot be dispatched because they are {status_desc}.",
+            )
+        if driver and driver.license_expiry < datetime.utcnow().date():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Driver '{driver.name}' cannot be dispatched because their driving license is expired.",
             )
         
         if vehicle:

@@ -60,6 +60,17 @@ def create_trip(
             detail=f"Vehicle with ID {trip_in.vehicle_id} not found",
         )
 
+    if vehicle.status == VehicleStatus.RETIRED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Vehicle '{vehicle.registration_number}' cannot be assigned because it is retired.",
+        )
+    if vehicle.status == VehicleStatus.IN_SHOP:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Vehicle '{vehicle.registration_number}' cannot be assigned because it is currently in the maintenance shop.",
+        )
+
     # Validate weight limit
     if trip_in.cargo_weight > vehicle.capacity_kg:
         raise HTTPException(
@@ -79,6 +90,12 @@ def create_trip(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Driver '{driver.name}' cannot be assigned because they are suspended.",
+        )
+        
+    if driver.status == DriverStatus.OFF_DUTY:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Driver '{driver.name}' cannot be assigned because they are currently off-duty.",
         )
         
     if driver.license_expiry < datetime.utcnow().date():

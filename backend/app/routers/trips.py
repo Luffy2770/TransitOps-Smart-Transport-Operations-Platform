@@ -128,14 +128,24 @@ def update_trip(
         driver = db.query(Driver).filter(Driver.id == target_driver_id).first()
         
         if vehicle and vehicle.status != VehicleStatus.AVAILABLE:
+            status_desc = "already on an active trip" if vehicle.status == VehicleStatus.ON_TRIP else f"in state '{vehicle.status.value}'"
+            if vehicle.status == VehicleStatus.IN_SHOP:
+                status_desc = "currently in the maintenance shop"
+            elif vehicle.status == VehicleStatus.RETIRED:
+                status_desc = "retired from the fleet"
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Vehicle '{vehicle.registration_number}' is not available (Current Status: {vehicle.status.value})",
+                detail=f"Vehicle '{vehicle.registration_number}' cannot be dispatched because it is {status_desc}.",
             )
         if driver and driver.status != DriverStatus.AVAILABLE:
+            status_desc = "already on an active trip" if driver.status == DriverStatus.ON_TRIP else f"in state '{driver.status.value}'"
+            if driver.status == DriverStatus.OFF_DUTY:
+                status_desc = "currently off-duty"
+            elif driver.status == DriverStatus.SUSPENDED:
+                status_desc = "currently suspended"
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Driver '{driver.name}' is not available (Current Status: {driver.status.value})",
+                detail=f"Driver '{driver.name}' cannot be dispatched because they are {status_desc}.",
             )
         
         if vehicle:

@@ -234,4 +234,28 @@ assert "expired" in trip_exp_res.json()["detail"].lower()
 del_exp_driver = requests.delete(f"{BASE_URL}/drivers/{exp_driver_id}", headers=fm_headers)
 assert del_exp_driver.status_code == 204
 
+# 20. User registration / Sign up check (Expect 201)
+print("\n[Test 20] Testing User registration (Sign Up)...")
+register_payload = {
+    "name": "Test Sign Up",
+    "email": "testsignup@transitops.com",
+    "password": "password123",
+    "role": "Dispatcher"
+}
+reg_res = requests.post(f"{BASE_URL}/auth/register", json=register_payload)
+print(f"Register status: {reg_res.status_code}, response: {reg_res.json()}")
+assert reg_res.status_code == 201
+
+# Try duplicate registration (Expect 400)
+reg_dup_res = requests.post(f"{BASE_URL}/auth/register", json=register_payload)
+print(f"Duplicate Register status: {reg_dup_res.status_code}")
+assert reg_dup_res.status_code == 400
+
+# Try logging in with new user (Expect 200)
+login_new_payload = {"email": "testsignup@transitops.com", "password": "password123"}
+login_new_res = requests.post(f"{BASE_URL}/auth/login", json=login_new_payload)
+assert login_new_res.status_code == 200
+assert login_new_res.json()["role"] == "Dispatcher"
+print("Registration and login verification success!")
+
 print("\n--- ALL COMPREHENSIVE TESTS PASSED SUCCESSFULLY! ---")
